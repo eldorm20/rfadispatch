@@ -106,11 +106,15 @@ export interface CheckCall {
   status?: LoadStatus; // status it moved the load to, if any
 }
 
+/** Where a load came from. Amazon-only for now; structured so other boards can be added later. */
+export type LoadSource = "manual" | "amazon";
+
 export interface Load {
   id: string;
 
   // Identity
   loadNumber: string; // VRID / load / reference number
+  source?: LoadSource; // defaults to "manual"; "amazon" = auto-imported from Relay
   broker: string; // broker or customer name
   brokerContact?: string;
 
@@ -144,6 +148,9 @@ export interface Load {
   // Paperwork tracking (metadata only — no file upload yet).
   docs?: LoadDocs;
 
+  // Accounting: set once this load has been put on a carrier invoice.
+  invoiceId?: string | null;
+
   notes?: string;
 
   // Soft delete — kept for 24h so deletes can be undone / restored from Trash.
@@ -160,6 +167,38 @@ export type NewLoadInput = Omit<
   Load,
   "id" | "createdAt" | "updatedAt" | "dispatcherId" | "dispatcherName" | "checkCalls" | "lastUpdate" | "lastUpdateAt"
 >;
+
+/* ============================================================
+   Accounting — the dispatch service bills each carrier a commission
+   (its fee) on the carrier's loads. An Invoice groups a carrier's
+   loads for a period and tracks whether that commission was paid.
+   ============================================================ */
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  paid: "Paid",
+  overdue: "Overdue",
+};
+
+export interface Invoice {
+  id: string;
+  number: string; // human invoice number, e.g. INV-1042
+  carrier: string;
+  loadIds: string[];
+  periodStart: string; // ISO yyyy-mm-dd
+  periodEnd: string;
+  totalGross: number; // sum of load gross on this invoice
+  commissionPct: number;
+  amountDue: number; // commission billed to the carrier (our revenue)
+  status: InvoiceStatus;
+  dueDate?: string;
+  paidAt?: number | null;
+  createdBy?: string;
+  createdAt: number;
+  notes?: string;
+}
 
 export interface OrgSettings {
   commissionPct: number; // dispatch service's cut of gross, e.g. 5 = 5%

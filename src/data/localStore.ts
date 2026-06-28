@@ -2,6 +2,7 @@ import {
   DEFAULT_SETTINGS,
   type AppUser,
   type CheckCall,
+  type Invoice,
   type Load,
   type LoadDocs,
   type LoadStatus,
@@ -19,6 +20,7 @@ import type { DataStore } from "./types";
 const LOADS_KEY = "tms.demo.loads";
 const SETTINGS_KEY = "tms.demo.settings";
 const USERS_KEY = "tms.demo.users";
+const INVOICES_KEY = "tms.demo.invoices";
 
 type Listener<T> = (val: T) => void;
 
@@ -138,12 +140,14 @@ function ensureSeed() {
   if (localStorage.getItem(LOADS_KEY) == null) write(LOADS_KEY, seedLoads());
   if (localStorage.getItem(USERS_KEY) == null) write(USERS_KEY, DEMO_USERS);
   if (localStorage.getItem(SETTINGS_KEY) == null) write(SETTINGS_KEY, DEFAULT_SETTINGS);
+  if (localStorage.getItem(INVOICES_KEY) == null) write(INVOICES_KEY, []);
 }
 
 /* ---------------- pub/sub ---------------- */
 
 const loadListeners = new Set<Listener<Load[]>>();
 const userListeners = new Set<Listener<AppUser[]>>();
+const invoiceListeners = new Set<Listener<Invoice[]>>();
 
 function getLoads(): Load[] {
   return read<Load[]>(LOADS_KEY, []).sort((a, b) => b.createdAt - a.createdAt);
@@ -155,12 +159,20 @@ function setLoads(loads: Load[]) {
 function getUsers(): AppUser[] {
   return read<AppUser[]>(USERS_KEY, DEMO_USERS);
 }
+function getInvoices(): Invoice[] {
+  return read<Invoice[]>(INVOICES_KEY, []).sort((a, b) => b.createdAt - a.createdAt);
+}
+function setInvoices(invs: Invoice[]) {
+  write(INVOICES_KEY, invs);
+  invoiceListeners.forEach((l) => l(getInvoices()));
+}
 
 // keep tabs in sync
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
     if (e.key === LOADS_KEY) loadListeners.forEach((l) => l(getLoads()));
     if (e.key === USERS_KEY) userListeners.forEach((l) => l(getUsers()));
+    if (e.key === INVOICES_KEY) invoiceListeners.forEach((l) => l(getInvoices()));
   });
 }
 
@@ -225,6 +237,25 @@ export const localStore: DataStore = {
     );
   },
 
+  subscribeInvoices(cb) {
+    ensureSeed();
+    invoiceListeners.add(cb);
+    cb(getInvoices());
+    return () => invoiceListeners.delete(cb);
+  },
+
+  async createInvoice(invoice) {
+    const inv: Invoice = { ...invoice, id: "INV" + Math.random().toString(36).slice(2, 9) };
+    setInvoices([inv, ...getInvoices()]);
+    // stamp the loads as invoiced
+    const ids = new Set(invoice.loadIds);
+    setLoads(getLoads().map((l) => (ids.has(l.id) ? { ...l, invoiceId: inv.id, status: "invoiced", updatedAt: Date.now() } : l)));
+  },
+
+  async updateInvoice(id, patch) {
+    setInvoices(getInvoices().map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  },
+
   async getSettings() {
     ensureSeed();
     return { ...DEFAULT_SETTINGS, ...read<Partial<OrgSettings>>(SETTINGS_KEY, {}) };
@@ -253,7 +284,9 @@ export function resetDemo() {
   localStorage.removeItem(LOADS_KEY);
   localStorage.removeItem(USERS_KEY);
   localStorage.removeItem(SETTINGS_KEY);
+  localStorage.removeItem(INVOICES_KEY);
   ensureSeed();
   loadListeners.forEach((l) => l(getLoads()));
   userListeners.forEach((l) => l(getUsers()));
+  invoiceListeners.forEach((l) => l(getInvoices()));
 }

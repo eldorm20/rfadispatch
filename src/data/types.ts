@@ -1,4 +1,4 @@
-import type { AppUser, Load, LoadStatus, NewLoadInput, OrgSettings, Role } from "../types";
+import type { AppUser, Invoice, Load, LoadStatus, NewLoadInput, OrgSettings, Role } from "../types";
 
 /**
  * Backend-agnostic data layer. Two implementations exist:
@@ -18,6 +18,11 @@ export interface DataStore {
   /** Permanently remove a load (from Trash). */
   purgeLoad(id: string): Promise<void>;
   addCheckCall(id: string, note: string, by: string, status?: LoadStatus): Promise<void>;
+
+  subscribeInvoices(cb: (invoices: Invoice[]) => void): () => void;
+  /** Create an invoice and stamp its loads with the invoice id (so they aren't billed twice). */
+  createInvoice(invoice: Omit<Invoice, "id">): Promise<void>;
+  updateInvoice(id: string, patch: Partial<Invoice>): Promise<void>;
 
   getSettings(): Promise<OrgSettings>;
   saveSettings(patch: Partial<OrgSettings>): Promise<void>;

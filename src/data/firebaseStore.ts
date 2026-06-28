@@ -17,11 +17,13 @@ import {
   DEFAULT_SETTINGS,
   type AppUser,
   type CheckCall,
+  type Invoice,
   type Load,
   type NewLoadInput,
   type OrgSettings,
   type Role,
 } from "../types";
+import { writeBatch } from "firebase/firestore";
 import type { DataStore } from "./types";
 
 const COL = "loads";
@@ -94,6 +96,30 @@ export const firebaseStore: DataStore = {
     };
     if (status) patch.status = status;
     await updateDoc(doc(db, COL, id), patch);
+  },
+
+  subscribeInvoices(cb) {
+    const q = query(collection(db, "invoices"), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data() as Record<string, unknown>;
+          return { id: d.id, ...data, createdAt: tsToMs(data.createdAt) } as Invoice;
+        })
+      );
+    });
+  },
+
+  async createInvoice(invoice) {
+    const batch = writeBatch(db);
+    const ref = doc(collection(db, "invoices"));
+    batch.set(ref, { ...invoice, createdAt: serverTimestamp() });
+    invoice.loadIds.forEach((lid) => batch.update(doc(db, COL, lid), { invoiceId: ref.id, status: "invoiced", updatedAt: serverTimestamp() }));
+    await batch.commit();
+  },
+
+  async updateInvoice(id, patch) {
+    await updateDoc(doc(db, "invoices", id), { ...patch });
   },
 
   async getSettings() {
