@@ -21,14 +21,28 @@ export function Dashboard() {
     return m;
   }, [users]);
 
-  // Today's loads grouped by dispatcher — the audit view (who booked what).
+  // Today's loads grouped by TEAM, then by dispatcher within each team — the audit view.
   const audit = useMemo(() => {
-    const m = new Map<string, Load[]>();
-    loads
-      .filter((l) => new Date(l.createdAt).toISOString().slice(0, 10) === todayISO() && l.status !== "cancelled")
-      .forEach((l) => (m.get(l.dispatcherName) ?? m.set(l.dispatcherName, []).get(l.dispatcherName)!).push(l));
-    return [...m.entries()]
-      .map(([name, ls]) => ({ name, team: teamByName.get(name) || "", loads: ls, gross: ls.reduce((s, l) => s + l.gross, 0) }))
+    const today = loads.filter((l) => new Date(l.createdAt).toISOString().slice(0, 10) === todayISO() && l.status !== "cancelled");
+    // team -> dispatcher -> loads
+    const teams = new Map<string, Map<string, Load[]>>();
+    today.forEach((l) => {
+      const team = teamByName.get(l.dispatcherName) || "Unassigned";
+      const byDisp = teams.get(team) ?? teams.set(team, new Map()).get(team)!;
+      (byDisp.get(l.dispatcherName) ?? byDisp.set(l.dispatcherName, []).get(l.dispatcherName)!).push(l);
+    });
+    return [...teams.entries()]
+      .map(([team, byDisp]) => {
+        const dispatchers = [...byDisp.entries()]
+          .map(([name, ls]) => ({ name, loads: ls, gross: ls.reduce((s, l) => s + l.gross, 0) }))
+          .sort((a, b) => b.gross - a.gross);
+        return {
+          team,
+          dispatchers,
+          loadCount: dispatchers.reduce((s, d) => s + d.loads.length, 0),
+          gross: dispatchers.reduce((s, d) => s + d.gross, 0),
+        };
+      })
       .sort((a, b) => b.gross - a.gross);
   }, [loads, teamByName]);
 
@@ -160,36 +174,47 @@ export function Dashboard() {
         )}
       </div>
 
-      {/* Audit board — every dispatch team / dispatcher with the loads they booked today */}
+      {/* Audit board — one card per team, dispatchers (and their loads) nested inside */}
       <div style={{ marginTop: 20 }}>
-        <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>Audit · Today’s loads by dispatcher</h3>
+        <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>Audit · Today’s loads by team</h3>
         {audit.length === 0 ? (
           <p className="muted" style={{ fontSize: 13 }}>No loads booked today yet.</p>
         ) : (
-          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-            {audit.map((g) => (
-              <div key={g.name} className="card" style={{ padding: 16 }}>
-                <div className="spread" style={{ marginBottom: 10 }}>
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
+            {audit.map((t) => (
+              <div key={t.team} className="card" style={{ padding: 0, overflow: "hidden" }}>
+                <div
+                  className="spread"
+                  style={{ padding: "12px 16px", background: "rgba(45,212,191,0.08)", borderBottom: "1px solid var(--line-strong)" }}
+                >
                   <div>
-                    <strong>{g.name}</strong>
-                    {g.team && (
-                      <span className="chip" style={{ marginLeft: 8, padding: "2px 8px", fontSize: 10 }}>
-                        {g.team}
-                      </span>
-                    )}
-                    <div className="muted" style={{ fontSize: 11 }}>{g.loads.length} load{g.loads.length === 1 ? "" : "s"}</div>
+                    <strong style={{ fontSize: 15, letterSpacing: 0.5 }}>{t.team}</strong>
+                    <span className="muted" style={{ fontSize: 11, marginLeft: 8 }}>
+                      {t.dispatchers.length} dispatcher{t.dispatchers.length === 1 ? "" : "s"} · {t.loadCount} load{t.loadCount === 1 ? "" : "s"}
+                    </span>
                   </div>
-                  <strong className="mono" style={{ color: "var(--green)" }}>{money(g.gross)}</strong>
+                  <strong className="mono" style={{ color: "var(--green)", fontSize: 16 }}>{money(t.gross)}</strong>
                 </div>
-                <div className="grid" style={{ gap: 6 }}>
-                  {g.loads.map((l) => (
-                    <div key={l.id} className="spread" style={{ fontSize: 12, paddingTop: 6, borderTop: "1px solid var(--line)" }}>
-                      <span className="mono">{l.loadNumber}</span>
-                      <span className="muted" style={{ flex: 1, margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {l.origin} → {l.destination}
-                      </span>
-                      <StatusPill status={l.status} />
-                      <span className="mono" style={{ marginLeft: 8, fontWeight: 700 }}>{money(l.gross)}</span>
+
+                <div style={{ padding: "6px 16px 14px" }}>
+                  {t.dispatchers.map((d) => (
+                    <div key={d.name} style={{ marginTop: 10 }}>
+                      <div className="spread" style={{ marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>
+                          {d.name} <span className="muted" style={{ fontWeight: 400 }}>· {d.loads.length} load{d.loads.length === 1 ? "" : "s"}</span>
+                        </span>
+                        <span className="mono" style={{ fontSize: 13 }}>{money(d.gross)}</span>
+                      </div>
+                      {d.loads.map((l) => (
+                        <div key={l.id} className="spread" style={{ fontSize: 12, padding: "5px 0", borderTop: "1px solid var(--line)" }}>
+                          <span className="mono">{l.loadNumber}</span>
+                          <span className="muted" style={{ flex: 1, margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {l.origin} → {l.destination}
+                          </span>
+                          <StatusPill status={l.status} />
+                          <span className="mono" style={{ marginLeft: 8, fontWeight: 700 }}>{money(l.gross)}</span>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>

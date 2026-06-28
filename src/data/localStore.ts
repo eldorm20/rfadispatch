@@ -52,10 +52,15 @@ export const DEMO_USERS: AppUser[] = [
   { uid: "u_admin", email: "you@rfa.com", name: "You (Admin)", role: "admin", team: "Management", active: true },
   { uid: "u_disp1", email: "aziz@rfa.com", name: "Aziz", role: "dispatcher", team: "Team A", active: true },
   { uid: "u_disp2", email: "diana@rfa.com", name: "Diana", role: "dispatcher", team: "Team B", active: true },
+  { uid: "u_disp3", email: "bek@rfa.com", name: "Bek", role: "dispatcher", team: "Team C", active: true },
+  { uid: "u_disp4", email: "lola@rfa.com", name: "Lola", role: "dispatcher", team: "Team E", active: true },
+  { uid: "u_disp5", email: "otabek@rfa.com", name: "Otabek", role: "dispatcher", team: "Team X", active: true },
   { uid: "u_upd", email: "sam@rfa.com", name: "Sam", role: "update_specialist", team: "Updates", active: true },
   { uid: "u_acct", email: "lena@rfa.com", name: "Lena", role: "accounting", team: "Accounting", active: true },
   { uid: "u_mgr", email: "boss@rfa.com", name: "Marco", role: "manager", team: "Management", active: true },
 ];
+
+const DEMO_DISPATCHERS = DEMO_USERS.filter((u) => u.role === "dispatcher");
 
 const DRIVER_NAMES = ["Rustam K.", "Mike D.", "Javohir T.", "Carlos M.", "Bek A.", "Tony R."];
 function seedDrivers(): Driver[] {
@@ -94,12 +99,12 @@ function pick<T>(arr: T[], i: number): T {
 
 function seedLoads(): Load[] {
   const statuses: LoadStatus[] = ["available", "booked", "dispatched", "in_transit", "delivered", "invoiced"];
-  const dispatchers = [DEMO_USERS[1], DEMO_USERS[2]];
+  const dispatchers = DEMO_DISPATCHERS;
   const out: Load[] = [];
   let n = 0;
   // Spread loads over the last 6 days so reports/history have data.
   for (let day = 0; day <= 5; day++) {
-    const count = day === 0 ? 5 : 3;
+    const count = day === 0 ? 10 : 3;
     for (let k = 0; k < count; k++) {
       const [origin, destination] = pick(LANES, n);
       const disp = pick(dispatchers, n);
