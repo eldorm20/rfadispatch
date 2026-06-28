@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { store } from "../data";
+import { useMemo } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useLoads, setLoadStatus } from "../hooks/useLoads";
+import { useSettings, saveSettings } from "../hooks/useSettings";
 import { StatusPill } from "../components/StatusPill";
 import { useToast } from "../components/Toast";
 import { can } from "../lib/permissions";
 import { money, shortDate } from "../lib/format";
-import { DEFAULT_SETTINGS, type Load, type OrgSettings } from "../types";
+import type { Load } from "../types";
 
 export function Accounting() {
   const { user } = useAuth();
@@ -14,16 +14,10 @@ export function Accounting() {
   const toast = useToast();
   const perms = user ? can(user.role) : null;
 
-  const [settings, setSettings] = useState<OrgSettings>(DEFAULT_SETTINGS);
-
-  useEffect(() => {
-    void store.getSettings().then(setSettings);
-  }, []);
+  const settings = useSettings();
 
   async function saveCommission(pct: number) {
-    const next = { ...settings, commissionPct: pct };
-    setSettings(next);
-    await store.saveSettings({ commissionPct: pct });
+    await saveSettings({ commissionPct: pct });
     toast("Commission rate saved");
   }
 

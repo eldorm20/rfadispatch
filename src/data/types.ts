@@ -12,7 +12,11 @@ export interface DataStore {
   createLoad(input: NewLoadInput, user: AppUser): Promise<void>;
   updateLoad(id: string, patch: Partial<Load>): Promise<void>;
   setLoadStatus(id: string, status: LoadStatus): Promise<void>;
+  /** Soft delete — sets deleted+deletedAt so it can be restored from Trash within 24h. */
   deleteLoad(id: string): Promise<void>;
+  restoreLoad(id: string): Promise<void>;
+  /** Permanently remove a load (from Trash). */
+  purgeLoad(id: string): Promise<void>;
   addCheckCall(id: string, note: string, by: string, status?: LoadStatus): Promise<void>;
 
   getSettings(): Promise<OrgSettings>;

@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { useLoads, createLoad, updateLoad, deleteLoad } from "../hooks/useLoads";
+import { useLoads, createLoad, updateLoad, deleteLoad, restoreLoad, isDuplicateLoadNumber } from "../hooks/useLoads";
+import { useSettings } from "../hooks/useSettings";
 import { LoadFormModal } from "../components/LoadFormModal";
+import { BulkPasteModal } from "../components/BulkPasteModal";
 import { StatusPill } from "../components/StatusPill";
 import { useToast } from "../components/Toast";
 import { can } from "../lib/permissions";
@@ -11,10 +13,12 @@ import { LOAD_STATUSES, STATUS_LABELS, type Load, type LoadStatus, type NewLoadI
 export function GrossBoard() {
   const { user } = useAuth();
   const { loads, loading, error } = useLoads();
+  const settings = useSettings();
   const toast = useToast();
   const perms = user ? can(user.role) : null;
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState<Load | null>(null);
   const [statusFilter, setStatusFilter] = useState<LoadStatus | "all">("all");
   const [searchq, setSearchq] = useState("");
@@ -37,6 +41,10 @@ export function GrossBoard() {
 
   async function handleSave(data: NewLoadInput) {
     if (!user) return;
+    const big = settings.confirmThreshold > 0 && data.gross >= settings.confirmThreshold;
+    if (big && !confirm(`This load is ${money(data.gross)} — that's above your ${money(settings.confirmThreshold)} confirm threshold. Save it?`)) {
+      return;
+    }
     if (editing) {
       await updateLoad(editing.id, data);
       toast("Load updated");
@@ -48,9 +56,12 @@ export function GrossBoard() {
   }
 
   async function handleDelete(l: Load) {
-    if (!confirm(`Delete load ${l.loadNumber}? This can’t be undone.`)) return;
+    const big = settings.confirmThreshold > 0 && l.gross >= settings.confirmThreshold;
+    if (big && !confirm(`Delete ${l.loadNumber} worth ${money(l.gross)}? You can still restore it from Trash within 24h.`)) {
+      return;
+    }
     await deleteLoad(l.id);
-    toast("Load deleted");
+    toast("Load deleted", { label: "↶ Undo", fn: () => void restoreLoad(l.id) });
   }
 
   function openNew() {
@@ -74,9 +85,14 @@ export function GrossBoard() {
           </p>
         </div>
         {perms?.bookLoads && (
-          <button className="btn primary" onClick={openNew}>
-            ＋ Book Load
-          </button>
+          <div className="row" style={{ flex: "0 0 auto" }}>
+            <button className="btn" onClick={() => setBulkOpen(true)} title="Paste multiple rows from a spreadsheet">
+              📋 Paste rows
+            </button>
+            <button className="btn primary" onClick={openNew}>
+              ＋ Book Load
+            </button>
+          </div>
         )}
       </div>
 
@@ -171,6 +187,7 @@ export function GrossBoard() {
       {modalOpen && (
         <LoadFormModal
           initial={editing}
+          isDuplicate={(ln) => isDuplicateLoadNumber(loads, ln, editing?.id)}
           onSave={handleSave}
           onClose={() => {
             setModalOpen(false);
@@ -178,6 +195,8 @@ export function GrossBoard() {
           }}
         />
       )}
+
+      {bulkOpen && <BulkPasteModal existing={loads} onClose={() => setBulkOpen(false)} />}
     </div>
   );
 }

@@ -11,6 +11,8 @@ import { UpdateBoard } from "./pages/UpdateBoard";
 import { Reports } from "./pages/Reports";
 import { Accounting } from "./pages/Accounting";
 import { Team } from "./pages/Team";
+import { Trash } from "./pages/Trash";
+import { Settings } from "./pages/Settings";
 import { TV } from "./pages/TV";
 
 export default function App() {
@@ -85,10 +87,26 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/trash"
+          element={
+            <ProtectedRoute view="trash">
+              <Trash />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin"
           element={
             <ProtectedRoute view="admin">
               <Team />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute view="settings">
+              <Settings />
             </ProtectedRoute>
           }
         />

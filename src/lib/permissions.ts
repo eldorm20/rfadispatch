@@ -7,7 +7,9 @@ export type ViewKey =
   | "updates"
   | "reports"
   | "accounting"
-  | "admin";
+  | "trash"
+  | "admin"
+  | "settings";
 
 export interface NavItem {
   key: ViewKey;
@@ -22,16 +24,18 @@ export const NAV: NavItem[] = [
   { key: "updates", path: "/updates", label: "Update Board", icon: "📍" },
   { key: "reports", path: "/reports", label: "Reports", icon: "📅" },
   { key: "accounting", path: "/accounting", label: "Accounting", icon: "🧾" },
+  { key: "trash", path: "/trash", label: "Trash", icon: "🗑" },
   { key: "admin", path: "/admin", label: "Team", icon: "👥" },
+  { key: "settings", path: "/settings", label: "Settings", icon: "⚙" },
 ];
 
 /** Which views each role can open. Managers/admins see everything. */
 const ACCESS: Record<Role, ViewKey[]> = {
   dispatcher: ["dashboard", "gross", "updates", "reports"],
   update_specialist: ["dashboard", "updates", "gross", "reports"],
-  manager: ["dashboard", "gross", "updates", "reports", "accounting", "admin"],
+  manager: ["dashboard", "gross", "updates", "reports", "accounting", "trash", "admin", "settings"],
   accounting: ["dashboard", "accounting", "gross", "reports"],
-  admin: ["dashboard", "gross", "updates", "reports", "accounting", "admin"],
+  admin: ["dashboard", "gross", "updates", "reports", "accounting", "trash", "admin", "settings"],
 };
 
 export function canAccess(role: Role, view: ViewKey): boolean {

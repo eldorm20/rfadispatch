@@ -1,13 +1,38 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useLoads } from "../hooks/useLoads";
-import { money } from "../lib/format";
-import { todayISO } from "../lib/format";
+import { useSettings } from "../hooks/useSettings";
+import { money, todayISO } from "../lib/format";
+import { fireConfetti, playFanfare } from "../lib/celebrate";
 import type { Load } from "../types";
 
 export function Dashboard() {
   const { loads, loading } = useLoads();
+  const settings = useSettings();
 
   const stats = useMemo(() => computeStats(loads), [loads]);
+
+  const goal = settings.dailyGoal || 0;
+  const goalPct = goal > 0 ? Math.min(100, (stats.todayGross / goal) * 100) : 0;
+  const baseline = settings.baseline || 0;
+  const baselinePct = baseline > 0 ? ((stats.todayGross - baseline) / baseline) * 100 : null;
+
+  // Confetti when today's gross crosses the goal — fire once per goal value.
+  const firedFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (goal > 0 && stats.todayGross >= goal) {
+      if (firedFor.current !== goal) {
+        firedFor.current = goal;
+        fireConfetti();
+        try {
+          playFanfare();
+        } catch {
+          /* audio not allowed yet */
+        }
+      }
+    } else {
+      firedFor.current = null; // re-arm if it drops back below
+    }
+  }, [stats.todayGross, goal]);
 
   if (loading) return <div className="empty">Loading dashboard…</div>;
 
@@ -28,10 +53,48 @@ export function Dashboard() {
         <div className="muted" style={{ fontSize: 12, letterSpacing: 3, textTransform: "uppercase" }}>
           Total Gross · Today
         </div>
-        <div style={{ fontSize: 52, fontWeight: 800, margin: "8px 0", color: "var(--green)" }}>{money(stats.todayGross)}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, margin: "8px 0" }}>
+          <div style={{ fontSize: 52, fontWeight: 800, color: "var(--green)" }}>{money(stats.todayGross)}</div>
+          {baselinePct !== null && (
+            <span
+              className="status"
+              style={{
+                fontSize: 13,
+                color: baselinePct >= 0 ? "var(--green)" : "var(--red)",
+                background: baselinePct >= 0 ? "rgba(74,222,128,0.16)" : "rgba(248,113,113,0.16)",
+              }}
+            >
+              {baselinePct >= 0 ? "▲" : "▼"} {Math.abs(baselinePct).toFixed(1)}%
+            </span>
+          )}
+        </div>
         <div className="muted" style={{ fontSize: 13 }}>
           {stats.todayCount} load{stats.todayCount === 1 ? "" : "s"} booked today · {money(stats.allGross)} all-time
         </div>
+
+        {goal > 0 && (
+          <div style={{ maxWidth: 520, margin: "18px auto 0" }}>
+            <div style={{ height: 12, background: "rgba(127,165,153,0.14)", borderRadius: 999, overflow: "hidden" }}>
+              <div
+                style={{
+                  width: `${goalPct}%`,
+                  height: "100%",
+                  background: "linear-gradient(90deg, var(--teal-2), var(--green))",
+                  transition: "width .6s ease",
+                }}
+              />
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+              🎯 Goal {money(goal)} · <span style={{ color: "var(--teal-2)" }}>{((stats.todayGross / goal) * 100).toFixed(1)}%</span> reached
+            </div>
+          </div>
+        )}
+
+        {stats.yesterdayToDate > 0 && (
+          <div className="muted" style={{ fontSize: 12, marginTop: 14 }}>
+            📊 Yesterday by now: <strong>{money(stats.yesterdayToDate)}</strong> · today: <strong>{money(stats.todayGross)}</strong>
+          </div>
+        )}
       </div>
 
       <div className="kpis" style={{ marginBottom: 20 }}>
@@ -107,8 +170,18 @@ function computeStats(loads: Load[]) {
   });
   const leaderboard = [...board.values()].sort((a, b) => b.gross - a.gross);
 
+  // Yesterday's gross, but only counting up to the current time-of-day — a fair pace comparison.
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const msIntoDay = now.getTime() - todayStart;
+  const yStart = todayStart - 86400000;
+  const yesterdayToDate = loads
+    .filter((l) => l.status !== "cancelled" && l.createdAt >= yStart && l.createdAt <= yStart + msIntoDay)
+    .reduce((s, l) => s + (l.gross || 0), 0);
+
   return {
     todayGross,
+    yesterdayToDate,
     allGross,
     todayCount: today.length,
     activeCount: active.length,

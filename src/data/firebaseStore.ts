@@ -73,6 +73,14 @@ export const firebaseStore: DataStore = {
   },
 
   async deleteLoad(id) {
+    await updateDoc(doc(db, COL, id), { deleted: true, deletedAt: Date.now(), updatedAt: serverTimestamp() });
+  },
+
+  async restoreLoad(id) {
+    await updateDoc(doc(db, COL, id), { deleted: false, deletedAt: null, updatedAt: serverTimestamp() });
+  },
+
+  async purgeLoad(id) {
     await deleteDoc(doc(db, COL, id));
   },
 

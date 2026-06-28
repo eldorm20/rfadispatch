@@ -114,6 +114,10 @@ export interface Load {
 
   notes?: string;
 
+  // Soft delete — kept for 24h so deletes can be undone / restored from Trash.
+  deleted?: boolean;
+  deletedAt?: number | null;
+
   // Timestamps (ms epoch; serverTimestamp resolved client-side)
   createdAt: number;
   updatedAt: number;
@@ -127,10 +131,14 @@ export type NewLoadInput = Omit<
 
 export interface OrgSettings {
   commissionPct: number; // dispatch service's cut of gross, e.g. 5 = 5%
-  dailyGoal: number; // gross goal for the dashboard
+  dailyGoal: number; // gross goal for the dashboard / TV board
+  baseline: number; // compare today's gross against this number (% badge)
+  confirmThreshold: number; // confirm before booking/deleting a load at/above this gross (typo guard)
 }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
   commissionPct: 5,
   dailyGoal: 0,
+  baseline: 0,
+  confirmThreshold: 5000,
 };

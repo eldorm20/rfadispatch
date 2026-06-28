@@ -187,6 +187,14 @@ export const localStore: DataStore = {
   },
 
   async deleteLoad(id) {
+    setLoads(getLoads().map((l) => (l.id === id ? { ...l, deleted: true, deletedAt: Date.now() } : l)));
+  },
+
+  async restoreLoad(id) {
+    setLoads(getLoads().map((l) => (l.id === id ? { ...l, deleted: false, deletedAt: null } : l)));
+  },
+
+  async purgeLoad(id) {
     setLoads(getLoads().filter((l) => l.id !== id));
   },
 
@@ -210,7 +218,7 @@ export const localStore: DataStore = {
 
   async getSettings() {
     ensureSeed();
-    return read<OrgSettings>(SETTINGS_KEY, DEFAULT_SETTINGS);
+    return { ...DEFAULT_SETTINGS, ...read<Partial<OrgSettings>>(SETTINGS_KEY, {}) };
   },
 
   async saveSettings(patch) {

@@ -13,6 +13,8 @@ type Props = {
   initial?: Load | null;
   onSave: (data: NewLoadInput) => Promise<void> | void;
   onClose: () => void;
+  /** Returns true if this load number collides with an existing one (excluding the one being edited). */
+  isDuplicate?: (loadNumber: string) => boolean;
 };
 
 const EMPTY: NewLoadInput = {
@@ -34,7 +36,7 @@ const EMPTY: NewLoadInput = {
   notes: "",
 };
 
-export function LoadFormModal({ initial, onSave, onClose }: Props) {
+export function LoadFormModal({ initial, onSave, onClose, isDuplicate }: Props) {
   const [form, setForm] = useState<NewLoadInput>(
     initial
       ? {
@@ -62,7 +64,8 @@ export function LoadFormModal({ initial, onSave, onClose }: Props) {
   const set = <K extends keyof NewLoadInput>(key: K, val: NewLoadInput[K]) =>
     setForm((f) => ({ ...f, [key]: val }));
 
-  const valid = form.loadNumber.trim() && form.carrier.trim() && form.gross >= 0;
+  const dup = !!form.loadNumber.trim() && !!isDuplicate?.(form.loadNumber.trim());
+  const valid = form.loadNumber.trim() && form.carrier.trim() && form.gross >= 0 && !dup;
 
   async function submit() {
     if (!valid) return;
@@ -92,7 +95,14 @@ export function LoadFormModal({ initial, onSave, onClose }: Props) {
         <div className="grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
           <div className="field">
             <label>Load / VRID *</label>
-            <input value={form.loadNumber} onChange={(e) => set("loadNumber", e.target.value)} placeholder="1127BSJCY" autoFocus />
+            <input
+              value={form.loadNumber}
+              onChange={(e) => set("loadNumber", e.target.value)}
+              placeholder="1127BSJCY"
+              autoFocus
+              style={dup ? { borderColor: "var(--red)" } : undefined}
+            />
+            {dup && <span style={{ color: "var(--red)", fontSize: 11 }}>This load number already exists.</span>}
           </div>
           <div className="field">
             <label>Gross rate *</label>
