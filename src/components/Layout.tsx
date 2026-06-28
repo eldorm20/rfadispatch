@@ -1,17 +1,20 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { navForRole } from "../lib/permissions";
 import { initials } from "../lib/format";
 import { ROLE_LABELS } from "../types";
 import { Logo } from "./Logo";
+import { DemoBanner } from "./DemoBanner";
 
 export function Layout() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, demo } = useAuth();
+  const navigate = useNavigate();
   if (!user) return null;
   const nav = navForRole(user.role);
 
   return (
     <div className="app">
+      <DemoBanner />
       <header className="topbar">
         <div className="brand">
           <div className="logo">
@@ -33,14 +36,19 @@ export function Layout() {
         </nav>
 
         <div className="userbox">
+          <button className="btn ghost sm" onClick={() => navigate("/tv")} title="Fullscreen TV board">
+            📺 TV
+          </button>
           <div className="avatar">{initials(user.name)}</div>
           <div className="user-meta">
             <div className="name">{user.name}</div>
             <div className="role">{ROLE_LABELS[user.role]}</div>
           </div>
-          <button className="btn ghost sm" onClick={() => void signOut()} title="Sign out">
-            ⎋
-          </button>
+          {!demo && (
+            <button className="btn ghost sm" onClick={() => void signOut()} title="Sign out">
+              ⎋
+            </button>
+          )}
         </div>
       </header>
 

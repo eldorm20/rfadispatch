@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { store } from "../data";
 import { useAuth } from "../auth/AuthContext";
 import { useLoads, setLoadStatus } from "../hooks/useLoads";
 import { StatusPill } from "../components/StatusPill";
@@ -18,15 +17,13 @@ export function Accounting() {
   const [settings, setSettings] = useState<OrgSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
-    void getDoc(doc(db, "org", "settings")).then((s) => {
-      if (s.exists()) setSettings({ ...DEFAULT_SETTINGS, ...(s.data() as Partial<OrgSettings>) });
-    });
+    void store.getSettings().then(setSettings);
   }, []);
 
   async function saveCommission(pct: number) {
     const next = { ...settings, commissionPct: pct };
     setSettings(next);
-    await setDoc(doc(db, "org", "settings"), next, { merge: true });
+    await store.saveSettings({ commissionPct: pct });
     toast("Commission rate saved");
   }
 

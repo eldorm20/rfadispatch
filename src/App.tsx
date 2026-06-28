@@ -1,27 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { firebaseConfigured } from "./firebase";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ToastProvider } from "./components/Toast";
 import { Aurora } from "./components/Aurora";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute, CenterSpinner } from "./components/ProtectedRoute";
-import { SetupNeeded } from "./pages/SetupNeeded";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { GrossBoard } from "./pages/GrossBoard";
 import { UpdateBoard } from "./pages/UpdateBoard";
+import { Reports } from "./pages/Reports";
 import { Accounting } from "./pages/Accounting";
 import { Team } from "./pages/Team";
+import { TV } from "./pages/TV";
 
 export default function App() {
-  if (!firebaseConfigured) {
-    return (
-      <>
-        <Aurora />
-        <SetupNeeded />
-      </>
-    );
-  }
+  // No Firebase? We run in demo mode (seeded localStorage), so the app is still
+  // fully usable. AuthProvider auto-authenticates a demo user.
   return (
     <AuthProvider>
       <ToastProvider>
@@ -41,6 +35,14 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route
+        path="/tv"
+        element={
+          <ProtectedRoute view="dashboard">
+            <TV />
+          </ProtectedRoute>
+        }
+      />
       <Route element={<Layout />}>
         <Route
           path="/"
@@ -63,6 +65,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute view="updates">
               <UpdateBoard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute view="reports">
+              <Reports />
             </ProtectedRoute>
           }
         />

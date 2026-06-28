@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, doc, onSnapshot, updateDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { store } from "../data";
 import { useAuth } from "../auth/AuthContext";
 import { useToast } from "../components/Toast";
 import { initials } from "../lib/format";
@@ -13,26 +12,10 @@ export function Team() {
   const toast = useToast();
   const [users, setUsers] = useState<AppUser[]>([]);
 
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "users"), (snap) => {
-      setUsers(
-        snap.docs.map((d) => {
-          const data = d.data() as Partial<AppUser>;
-          return {
-            uid: d.id,
-            email: data.email ?? "",
-            name: data.name ?? "—",
-            role: (data.role as Role) ?? "dispatcher",
-            active: data.active !== false,
-          };
-        })
-      );
-    });
-    return unsub;
-  }, []);
+  useEffect(() => store.subscribeUsers(setUsers), []);
 
   async function changeRole(uid: string, role: Role) {
-    await updateDoc(doc(db, "users", uid), { role });
+    await store.updateUserRole(uid, role);
     toast("Role updated");
   }
 

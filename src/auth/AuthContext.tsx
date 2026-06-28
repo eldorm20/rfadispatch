@@ -6,23 +6,28 @@ import {
   type User as FbUser,
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { auth, db, firebaseConfigured } from "../firebase";
+import { DEMO } from "../data";
+import { DEMO_USERS } from "../data/localStore";
 import type { AppUser, Role } from "../types";
 
 interface AuthState {
-  fbUser: FbUser | null;
-  user: AppUser | null; // app profile (with role) from Firestore
+  user: AppUser | null; // app profile (with role)
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  // Demo-only: switch which seeded user you're acting as.
+  demo: boolean;
+  demoUsers: AppUser[];
+  setActiveUser: (uid: string) => void;
 }
 
 const AuthCtx = createContext<AuthState | null>(null);
+const DEMO_ACTIVE_KEY = "tms.demo.activeUid";
 
 /**
  * Load (or lazily create) the user's profile doc at `users/{uid}`.
- * First user to ever sign in becomes an admin so the org can be set up;
- * everyone after defaults to `dispatcher` until a manager changes it.
+ * First user to ever sign in becomes admin so the org can be set up.
  */
 async function loadProfile(fb: FbUser): Promise<AppUser> {
   const ref = doc(db, "users", fb.uid);
@@ -49,13 +54,22 @@ async function loadProfile(fb: FbUser): Promise<AppUser> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [fbUser, setFbUser] = useState<FbUser | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // ---- Demo mode: auto-authed, switch identity locally ----
   useEffect(() => {
+    if (!DEMO) return;
+    const savedUid = localStorage.getItem(DEMO_ACTIVE_KEY);
+    const initial = DEMO_USERS.find((u) => u.uid === savedUid) ?? DEMO_USERS[0];
+    setUser(initial);
+    setLoading(false);
+  }, []);
+
+  // ---- Firebase mode ----
+  useEffect(() => {
+    if (DEMO || !firebaseConfigured) return;
     const unsub = onAuthStateChanged(auth, async (fb) => {
-      setFbUser(fb);
       if (fb) {
         try {
           setUser(await loadProfile(fb));
@@ -71,13 +85,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value: AuthState = {
-    fbUser,
     user,
     loading,
+    demo: DEMO,
+    demoUsers: DEMO ? DEMO_USERS : [],
+    setActiveUser: (uid) => {
+      const u = DEMO_USERS.find((x) => x.uid === uid);
+      if (u) {
+        localStorage.setItem(DEMO_ACTIVE_KEY, uid);
+        setUser(u);
+      }
+    },
     signIn: async (email, password) => {
       await signInWithEmailAndPassword(auth, email.trim(), password);
     },
     signOut: async () => {
+      if (DEMO) return; // nothing to sign out of in demo
       await fbSignOut(auth);
     },
   };
