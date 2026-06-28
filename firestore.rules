@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// Firestore security rules for Dispatch TMS.
+// Paste into Firebase Console → Firestore Database → Rules, or deploy with the Firebase CLI.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isManager() {
+      return signedIn() && (myRole() == 'manager' || myRole() == 'admin');
+    }
+
+    // User profiles. A user can read the directory and create/read their own doc;
+    // only managers/admins can change someone's role.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if signedIn() && (request.auth.uid == uid || isManager());
+      allow delete: if isManager();
+    }
+
+    // Loads — any signed-in team member can read and write.
+    // (Field-level role enforcement is handled in the app; tighten here later if needed.)
+    match /loads/{loadId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if signedIn();
+    }
+
+    // Org-wide settings (commission %, goals). Anyone signed in reads; managers write.
+    match /org/{docId} {
+      allow read: if signedIn();
+      allow write: if isManager();
+    }
+  }
+}

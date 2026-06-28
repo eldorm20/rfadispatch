@@ -1,0 +1,136 @@
+/* ============================================================
+   Domain model for the dispatch-service TMS.
+
+   A dispatch service books loads on behalf of carriers / owner-
+   operators and earns a commission off the gross. A single Load
+   record is the shared object that flows through every role:
+
+     dispatcher books it (gross board)
+       -> update specialist tracks it (update board)
+         -> accounting bills commission off the gross
+   ============================================================ */
+
+export type Role = "dispatcher" | "update_specialist" | "manager" | "accounting" | "admin";
+
+export const ROLE_LABELS: Record<Role, string> = {
+  dispatcher: "Dispatcher",
+  update_specialist: "Update Specialist",
+  manager: "Manager",
+  accounting: "Accounting",
+  admin: "Admin",
+};
+
+export interface AppUser {
+  uid: string;
+  email: string;
+  name: string;
+  role: Role;
+  active?: boolean;
+}
+
+/* Load lifecycle — the columns of the operation. */
+export type LoadStatus =
+  | "available" // booked by dispatcher, not yet assigned/dispatched
+  | "booked" // confirmed with broker, rate con in
+  | "dispatched" // driver has been dispatched / heading to pickup
+  | "in_transit" // picked up, on the road
+  | "delivered" // delivered, POD pending/received
+  | "invoiced" // commission billed to carrier
+  | "cancelled";
+
+export const LOAD_STATUSES: LoadStatus[] = [
+  "available",
+  "booked",
+  "dispatched",
+  "in_transit",
+  "delivered",
+  "invoiced",
+  "cancelled",
+];
+
+export const STATUS_LABELS: Record<LoadStatus, string> = {
+  available: "Available",
+  booked: "Booked",
+  dispatched: "Dispatched",
+  in_transit: "In Transit",
+  delivered: "Delivered",
+  invoiced: "Invoiced",
+  cancelled: "Cancelled",
+};
+
+export type Equipment = "van" | "reefer" | "flatbed" | "power_only" | "stepdeck" | "other";
+
+export const EQUIPMENT_LABELS: Record<Equipment, string> = {
+  van: "Dry Van",
+  reefer: "Reefer",
+  flatbed: "Flatbed",
+  power_only: "Power Only",
+  stepdeck: "Step Deck",
+  other: "Other",
+};
+
+/* A check call / status note added by an update specialist. */
+export interface CheckCall {
+  ts: number;
+  by: string; // dispatcher/specialist name
+  note: string;
+  status?: LoadStatus; // status it moved the load to, if any
+}
+
+export interface Load {
+  id: string;
+
+  // Identity
+  loadNumber: string; // VRID / load / reference number
+  broker: string; // broker or customer name
+  brokerContact?: string;
+
+  // Who's hauling it
+  carrier: string; // carrier / owner-operator company
+  driver: string; // driver name
+  driverPhone?: string;
+  truck?: string;
+
+  // Lane
+  origin: string; // "City, ST"
+  destination: string; // "City, ST"
+  pickupDate?: string; // ISO yyyy-mm-dd
+  deliveryDate?: string; // ISO yyyy-mm-dd
+  equipment: Equipment;
+  miles?: number;
+
+  // Money
+  gross: number; // line-haul / total rate
+
+  // Ownership + lifecycle
+  dispatcherId: string; // uid of dispatcher who booked it
+  dispatcherName: string;
+  status: LoadStatus;
+
+  // Update board
+  lastUpdate?: string; // most recent check-call note
+  lastUpdateAt?: number;
+  checkCalls?: CheckCall[];
+
+  notes?: string;
+
+  // Timestamps (ms epoch; serverTimestamp resolved client-side)
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Fields a dispatcher fills when booking — everything else is derived/defaulted. */
+export type NewLoadInput = Omit<
+  Load,
+  "id" | "createdAt" | "updatedAt" | "dispatcherId" | "dispatcherName" | "checkCalls" | "lastUpdate" | "lastUpdateAt"
+>;
+
+export interface OrgSettings {
+  commissionPct: number; // dispatch service's cut of gross, e.g. 5 = 5%
+  dailyGoal: number; // gross goal for the dashboard
+}
+
+export const DEFAULT_SETTINGS: OrgSettings = {
+  commissionPct: 5,
+  dailyGoal: 0,
+};

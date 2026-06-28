@@ -1,0 +1,32 @@
+export function Logo() {
+  return (
+    <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="rfaWave" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#4ade80" />
+          <stop offset="100%" stopColor="#22c55e" />
+        </linearGradient>
+      </defs>
+      <g stroke="url(#rfaWave)" strokeWidth="0.9" fill="none" opacity="0.85">
+        <path d="M -2 38 Q 8 28 18 38 T 38 38 T 58 36" />
+        <path d="M -2 42 Q 8 32 18 42 T 38 42 T 58 40" />
+        <path d="M -2 46 Q 8 36 18 46 T 38 46 T 58 44" />
+        <path d="M -2 50 Q 8 40 18 50 T 38 50 T 58 48" />
+        <path d="M -2 54 Q 8 44 18 54 T 38 54 T 58 52" />
+      </g>
+      <text
+        x="50%"
+        y="42%"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontFamily="Inter, sans-serif"
+        fontWeight="900"
+        fontSize="16"
+        fill="#fff"
+        letterSpacing="1"
+      >
+        RFA
+      </text>
+    </svg>
+  );
+}
