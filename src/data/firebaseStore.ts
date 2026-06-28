@@ -17,6 +17,7 @@ import {
   DEFAULT_SETTINGS,
   type AppUser,
   type CheckCall,
+  type Driver,
   type Invoice,
   type Load,
   type NewLoadInput,
@@ -150,5 +151,28 @@ export const firebaseStore: DataStore = {
 
   async updateUserRole(uid, role) {
     await updateDoc(doc(db, "users", uid), { role });
+  },
+
+  async updateUser(uid, patch) {
+    await updateDoc(doc(db, "users", uid), { ...patch });
+  },
+
+  subscribeDrivers(cb) {
+    const q = query(collection(db, "drivers"), orderBy("name", "asc"));
+    return onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }) as Driver));
+    });
+  },
+
+  async createDriver(driver) {
+    await addDoc(collection(db, "drivers"), { ...driver, active: driver.active !== false, createdAt: Date.now() });
+  },
+
+  async updateDriver(id, patch) {
+    await updateDoc(doc(db, "drivers", id), { ...patch });
+  },
+
+  async deleteDriver(id) {
+    await deleteDoc(doc(db, "drivers", id));
   },
 };

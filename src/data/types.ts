@@ -1,4 +1,4 @@
-import type { AppUser, Invoice, Load, LoadStatus, NewLoadInput, OrgSettings, Role } from "../types";
+import type { AppUser, Driver, Invoice, Load, LoadStatus, NewLoadInput, OrgSettings, Role } from "../types";
 
 /**
  * Backend-agnostic data layer. Two implementations exist:
@@ -29,4 +29,10 @@ export interface DataStore {
 
   subscribeUsers(cb: (users: AppUser[]) => void): () => void;
   updateUserRole(uid: string, role: Role): Promise<void>;
+  updateUser(uid: string, patch: Partial<AppUser>): Promise<void>;
+
+  subscribeDrivers(cb: (drivers: Driver[]) => void): () => void;
+  createDriver(driver: Omit<Driver, "id" | "createdAt">): Promise<void>;
+  updateDriver(id: string, patch: Partial<Driver>): Promise<void>;
+  deleteDriver(id: string): Promise<void>;
 }

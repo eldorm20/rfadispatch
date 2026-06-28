@@ -25,7 +25,20 @@ export interface AppUser {
   email: string;
   name: string;
   role: Role;
+  team?: string; // dispatch team this person belongs to (for the audit board)
   active?: boolean;
+}
+
+/** A driver in the roster — added once, then picked when assigning/searching loads. */
+export interface Driver {
+  id: string;
+  name: string;
+  phone?: string;
+  carrier?: string; // carrier / owner-operator they run under
+  truck?: string;
+  active?: boolean;
+  notes?: string;
+  createdAt: number;
 }
 
 /* Load lifecycle — the columns of the operation. */

@@ -8,6 +8,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { GrossBoard } from "./pages/GrossBoard";
 import { UpdateBoard } from "./pages/UpdateBoard";
+import { Drivers } from "./pages/Drivers";
 import { Documents } from "./pages/Documents";
 import { Reports } from "./pages/Reports";
 import { Accounting } from "./pages/Accounting";
@@ -68,6 +69,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute view="updates">
               <UpdateBoard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/drivers"
+          element={
+            <ProtectedRoute view="drivers">
+              <Drivers />
             </ProtectedRoute>
           }
         />

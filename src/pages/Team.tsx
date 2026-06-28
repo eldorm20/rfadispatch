@@ -1,22 +1,22 @@
-import { useEffect, useState } from "react";
-import { store } from "../data";
 import { useAuth } from "../auth/AuthContext";
+import { useUsers, updateUser, updateUserRole } from "../hooks/useUsers";
 import { useToast } from "../components/Toast";
 import { initials } from "../lib/format";
-import { ROLE_LABELS, type AppUser, type Role } from "../types";
+import { ROLE_LABELS, type Role } from "../types";
 
 const ROLES: Role[] = ["dispatcher", "update_specialist", "manager", "accounting", "admin"];
 
 export function Team() {
   const { user } = useAuth();
   const toast = useToast();
-  const [users, setUsers] = useState<AppUser[]>([]);
-
-  useEffect(() => store.subscribeUsers(setUsers), []);
+  const users = useUsers();
 
   async function changeRole(uid: string, role: Role) {
-    await store.updateUserRole(uid, role);
+    await updateUserRole(uid, role);
     toast("Role updated");
+  }
+  async function changeTeam(uid: string, team: string) {
+    await updateUser(uid, { team });
   }
 
   return (
@@ -24,7 +24,7 @@ export function Team() {
       <div className="page-head">
         <div>
           <h2>Team</h2>
-          <p>Manage who has access and what they can do. New sign-ins start as Dispatcher.</p>
+          <p>Manage access, roles and dispatch teams. New sign-ins start as Dispatcher.</p>
         </div>
       </div>
 
@@ -34,6 +34,7 @@ export function Team() {
             <tr>
               <th>Member</th>
               <th>Email</th>
+              <th>Team</th>
               <th>Role</th>
             </tr>
           </thead>
@@ -51,12 +52,17 @@ export function Team() {
                 </td>
                 <td className="muted">{u.email}</td>
                 <td>
-                  <select
-                    value={u.role}
-                    onChange={(e) => void changeRole(u.uid, e.target.value as Role)}
-                    disabled={u.uid === user?.uid}
-                    style={{ width: 180 }}
-                  >
+                  <input
+                    defaultValue={u.team ?? ""}
+                    placeholder="Team A…"
+                    onBlur={(e) => {
+                      if (e.target.value !== (u.team ?? "")) void changeTeam(u.uid, e.target.value);
+                    }}
+                    style={{ width: 130 }}
+                  />
+                </td>
+                <td>
+                  <select value={u.role} onChange={(e) => void changeRole(u.uid, e.target.value as Role)} disabled={u.uid === user?.uid} style={{ width: 170 }}>
                     {ROLES.map((r) => (
                       <option key={r} value={r}>
                         {ROLE_LABELS[r]}
@@ -68,7 +74,7 @@ export function Team() {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={3} className="muted" style={{ textAlign: "center", padding: 24 }}>
+                <td colSpan={4} className="muted" style={{ textAlign: "center", padding: 24 }}>
                   No team members yet.
                 </td>
               </tr>

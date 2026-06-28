@@ -2,6 +2,7 @@ import {
   DEFAULT_SETTINGS,
   type AppUser,
   type CheckCall,
+  type Driver,
   type Invoice,
   type Load,
   type LoadDocs,
@@ -21,6 +22,7 @@ const LOADS_KEY = "tms.demo.loads";
 const SETTINGS_KEY = "tms.demo.settings";
 const USERS_KEY = "tms.demo.users";
 const INVOICES_KEY = "tms.demo.invoices";
+const DRIVERS_KEY = "tms.demo.drivers";
 
 type Listener<T> = (val: T) => void;
 
@@ -47,13 +49,26 @@ function uid() {
 /* ---------------- seed ---------------- */
 
 export const DEMO_USERS: AppUser[] = [
-  { uid: "u_admin", email: "you@rfa.com", name: "You (Admin)", role: "admin", active: true },
-  { uid: "u_disp1", email: "aziz@rfa.com", name: "Aziz", role: "dispatcher", active: true },
-  { uid: "u_disp2", email: "diana@rfa.com", name: "Diana", role: "dispatcher", active: true },
-  { uid: "u_upd", email: "sam@rfa.com", name: "Sam", role: "update_specialist", active: true },
-  { uid: "u_acct", email: "lena@rfa.com", name: "Lena", role: "accounting", active: true },
-  { uid: "u_mgr", email: "boss@rfa.com", name: "Marco", role: "manager", active: true },
+  { uid: "u_admin", email: "you@rfa.com", name: "You (Admin)", role: "admin", team: "Management", active: true },
+  { uid: "u_disp1", email: "aziz@rfa.com", name: "Aziz", role: "dispatcher", team: "Team A", active: true },
+  { uid: "u_disp2", email: "diana@rfa.com", name: "Diana", role: "dispatcher", team: "Team B", active: true },
+  { uid: "u_upd", email: "sam@rfa.com", name: "Sam", role: "update_specialist", team: "Updates", active: true },
+  { uid: "u_acct", email: "lena@rfa.com", name: "Lena", role: "accounting", team: "Accounting", active: true },
+  { uid: "u_mgr", email: "boss@rfa.com", name: "Marco", role: "manager", team: "Management", active: true },
 ];
+
+const DRIVER_NAMES = ["Rustam K.", "Mike D.", "Javohir T.", "Carlos M.", "Bek A.", "Tony R."];
+function seedDrivers(): Driver[] {
+  return DRIVER_NAMES.map((name, i) => ({
+    id: "drv_" + i,
+    name,
+    phone: "(312) 555-0" + (100 + i),
+    carrier: CARRIERS[i % CARRIERS.length],
+    truck: "TRK-" + (1000 + i * 7),
+    active: true,
+    createdAt: Date.now() - i * 86400000,
+  }));
+}
 
 const LANES: [string, string][] = [
   ["Chicago, IL", "Dallas, TX"],
@@ -141,6 +156,7 @@ function ensureSeed() {
   if (localStorage.getItem(USERS_KEY) == null) write(USERS_KEY, DEMO_USERS);
   if (localStorage.getItem(SETTINGS_KEY) == null) write(SETTINGS_KEY, DEFAULT_SETTINGS);
   if (localStorage.getItem(INVOICES_KEY) == null) write(INVOICES_KEY, []);
+  if (localStorage.getItem(DRIVERS_KEY) == null) write(DRIVERS_KEY, seedDrivers());
 }
 
 /* ---------------- pub/sub ---------------- */
@@ -148,6 +164,7 @@ function ensureSeed() {
 const loadListeners = new Set<Listener<Load[]>>();
 const userListeners = new Set<Listener<AppUser[]>>();
 const invoiceListeners = new Set<Listener<Invoice[]>>();
+const driverListeners = new Set<Listener<Driver[]>>();
 
 function getLoads(): Load[] {
   return read<Load[]>(LOADS_KEY, []).sort((a, b) => b.createdAt - a.createdAt);
@@ -166,6 +183,13 @@ function setInvoices(invs: Invoice[]) {
   write(INVOICES_KEY, invs);
   invoiceListeners.forEach((l) => l(getInvoices()));
 }
+function getDrivers(): Driver[] {
+  return read<Driver[]>(DRIVERS_KEY, []).sort((a, b) => a.name.localeCompare(b.name));
+}
+function setDrivers(ds: Driver[]) {
+  write(DRIVERS_KEY, ds);
+  driverListeners.forEach((l) => l(getDrivers()));
+}
 
 // keep tabs in sync
 if (typeof window !== "undefined") {
@@ -173,6 +197,7 @@ if (typeof window !== "undefined") {
     if (e.key === LOADS_KEY) loadListeners.forEach((l) => l(getLoads()));
     if (e.key === USERS_KEY) userListeners.forEach((l) => l(getUsers()));
     if (e.key === INVOICES_KEY) invoiceListeners.forEach((l) => l(getInvoices()));
+    if (e.key === DRIVERS_KEY) driverListeners.forEach((l) => l(getDrivers()));
   });
 }
 
@@ -277,6 +302,32 @@ export const localStore: DataStore = {
     write(USERS_KEY, users);
     userListeners.forEach((l) => l(users));
   },
+
+  async updateUser(uid: string, patch: Partial<AppUser>) {
+    const users = getUsers().map((u) => (u.uid === uid ? { ...u, ...patch } : u));
+    write(USERS_KEY, users);
+    userListeners.forEach((l) => l(users));
+  },
+
+  subscribeDrivers(cb) {
+    ensureSeed();
+    driverListeners.add(cb);
+    cb(getDrivers());
+    return () => driverListeners.delete(cb);
+  },
+
+  async createDriver(driver) {
+    const d: Driver = { ...driver, id: "drv_" + Math.random().toString(36).slice(2, 9), active: driver.active !== false, createdAt: Date.now() };
+    setDrivers([...getDrivers(), d]);
+  },
+
+  async updateDriver(id, patch) {
+    setDrivers(getDrivers().map((d) => (d.id === id ? { ...d, ...patch } : d)));
+  },
+
+  async deleteDriver(id) {
+    setDrivers(getDrivers().filter((d) => d.id !== id));
+  },
 };
 
 /** Wipe demo data and re-seed (used by the demo banner's reset button). */
@@ -285,8 +336,10 @@ export function resetDemo() {
   localStorage.removeItem(USERS_KEY);
   localStorage.removeItem(SETTINGS_KEY);
   localStorage.removeItem(INVOICES_KEY);
+  localStorage.removeItem(DRIVERS_KEY);
   ensureSeed();
   loadListeners.forEach((l) => l(getLoads()));
   userListeners.forEach((l) => l(getUsers()));
   invoiceListeners.forEach((l) => l(getInvoices()));
+  driverListeners.forEach((l) => l(getDrivers()));
 }

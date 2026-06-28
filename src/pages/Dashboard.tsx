@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useLoads } from "../hooks/useLoads";
 import { useSettings } from "../hooks/useSettings";
+import { useUsers } from "../hooks/useUsers";
+import { StatusPill } from "../components/StatusPill";
 import { money, todayISO } from "../lib/format";
 import { fireConfetti, playFanfare } from "../lib/celebrate";
 import type { Load } from "../types";
@@ -8,8 +10,27 @@ import type { Load } from "../types";
 export function Dashboard() {
   const { loads, loading } = useLoads();
   const settings = useSettings();
+  const users = useUsers();
 
   const stats = useMemo(() => computeStats(loads), [loads]);
+
+  // Map dispatcher name -> team for the audit board.
+  const teamByName = useMemo(() => {
+    const m = new Map<string, string>();
+    users.forEach((u) => m.set(u.name, u.team ?? ""));
+    return m;
+  }, [users]);
+
+  // Today's loads grouped by dispatcher — the audit view (who booked what).
+  const audit = useMemo(() => {
+    const m = new Map<string, Load[]>();
+    loads
+      .filter((l) => new Date(l.createdAt).toISOString().slice(0, 10) === todayISO() && l.status !== "cancelled")
+      .forEach((l) => (m.get(l.dispatcherName) ?? m.set(l.dispatcherName, []).get(l.dispatcherName)!).push(l));
+    return [...m.entries()]
+      .map(([name, ls]) => ({ name, team: teamByName.get(name) || "", loads: ls, gross: ls.reduce((s, l) => s + l.gross, 0) }))
+      .sort((a, b) => b.gross - a.gross);
+  }, [loads, teamByName]);
 
   const goal = settings.dailyGoal || 0;
   const goalPct = goal > 0 ? Math.min(100, (stats.todayGross / goal) * 100) : 0;
@@ -135,6 +156,45 @@ export function Dashboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Audit board — every dispatch team / dispatcher with the loads they booked today */}
+      <div style={{ marginTop: 20 }}>
+        <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>Audit · Today’s loads by dispatcher</h3>
+        {audit.length === 0 ? (
+          <p className="muted" style={{ fontSize: 13 }}>No loads booked today yet.</p>
+        ) : (
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+            {audit.map((g) => (
+              <div key={g.name} className="card" style={{ padding: 16 }}>
+                <div className="spread" style={{ marginBottom: 10 }}>
+                  <div>
+                    <strong>{g.name}</strong>
+                    {g.team && (
+                      <span className="chip" style={{ marginLeft: 8, padding: "2px 8px", fontSize: 10 }}>
+                        {g.team}
+                      </span>
+                    )}
+                    <div className="muted" style={{ fontSize: 11 }}>{g.loads.length} load{g.loads.length === 1 ? "" : "s"}</div>
+                  </div>
+                  <strong className="mono" style={{ color: "var(--green)" }}>{money(g.gross)}</strong>
+                </div>
+                <div className="grid" style={{ gap: 6 }}>
+                  {g.loads.map((l) => (
+                    <div key={l.id} className="spread" style={{ fontSize: 12, paddingTop: 6, borderTop: "1px solid var(--line)" }}>
+                      <span className="mono">{l.loadNumber}</span>
+                      <span className="muted" style={{ flex: 1, margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {l.origin} → {l.destination}
+                      </span>
+                      <StatusPill status={l.status} />
+                      <span className="mono" style={{ marginLeft: 8, fontWeight: 700 }}>{money(l.gross)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

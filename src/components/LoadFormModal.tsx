@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DriverPicker } from "./DriverPicker";
 import {
   EQUIPMENT_LABELS,
   LOAD_STATUSES,
@@ -135,7 +136,19 @@ export function LoadFormModal({ initial, onSave, onClose, isDuplicate }: Props) 
 
           <div className="field">
             <label>Driver</label>
-            <input value={form.driver} onChange={(e) => set("driver", e.target.value)} placeholder="Driver name" />
+            <DriverPicker
+              value={form.driver}
+              onText={(name) => set("driver", name)}
+              onPick={(d) =>
+                setForm((f) => ({
+                  ...f,
+                  driver: d.name,
+                  driverPhone: d.phone || f.driverPhone,
+                  truck: d.truck || f.truck,
+                  carrier: f.carrier || d.carrier || "",
+                }))
+              }
+            />
           </div>
           <div className="field">
             <label>Driver phone</label>
