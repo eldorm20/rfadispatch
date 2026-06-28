@@ -3,6 +3,7 @@ import {
   type AppUser,
   type CheckCall,
   type Load,
+  type LoadDocs,
   type LoadStatus,
   type OrgSettings,
   type Role,
@@ -89,6 +90,13 @@ function seedLoads(): Load[] {
       // older loads tend to be further along the lifecycle
       const status = day === 0 ? pick(statuses.slice(0, 4), k) : day >= 3 ? pick(["delivered", "invoiced"] as LoadStatus[], k) : pick(statuses.slice(2), k);
       const gross = 1500 + ((n * 137) % 2200);
+      // Seed paperwork roughly matching how far the load has progressed.
+      const rcv = (at: number): { received: true; at: number; by: string } => ({ received: true, at, by: "Sam" });
+      const docs: LoadDocs = {};
+      if (["booked", "dispatched", "in_transit", "delivered", "invoiced"].includes(status)) docs.rate_con = rcv(created);
+      if (["in_transit", "delivered", "invoiced"].includes(status)) docs.bol = rcv(created + 3600000);
+      if (["delivered", "invoiced"].includes(status) && n % 4 !== 0) docs.pod = rcv(created + 7200000);
+      if (status === "invoiced") docs.invoice = rcv(created + 10800000);
       const checkCalls: CheckCall[] =
         status === "in_transit" || status === "delivered" || status === "invoiced"
           ? [
@@ -116,6 +124,7 @@ function seedLoads(): Load[] {
         lastUpdate: checkCalls.at(-1)?.note,
         lastUpdateAt: checkCalls.at(-1)?.ts,
         checkCalls,
+        docs,
         createdAt: created,
         updatedAt: created,
       });

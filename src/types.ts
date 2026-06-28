@@ -69,6 +69,35 @@ export const EQUIPMENT_LABELS: Record<Equipment, string> = {
   other: "Other",
 };
 
+/* Documents tracked per load (metadata only for now — no file upload).
+   Each can be marked received with who/when, so the team can chase missing paperwork. */
+export type DocKind = "rate_con" | "bol" | "pod" | "invoice";
+
+export const DOC_KINDS: DocKind[] = ["rate_con", "bol", "pod", "invoice"];
+
+export const DOC_LABELS: Record<DocKind, string> = {
+  rate_con: "Rate Con",
+  bol: "BOL",
+  pod: "POD",
+  invoice: "Invoice",
+};
+
+/** Short tag for compact badges. */
+export const DOC_SHORT: Record<DocKind, string> = {
+  rate_con: "RC",
+  bol: "BOL",
+  pod: "POD",
+  invoice: "INV",
+};
+
+export interface DocEntry {
+  received: boolean;
+  at?: number;
+  by?: string;
+}
+
+export type LoadDocs = Partial<Record<DocKind, DocEntry>>;
+
 /* A check call / status note added by an update specialist. */
 export interface CheckCall {
   ts: number;
@@ -111,6 +140,9 @@ export interface Load {
   lastUpdate?: string; // most recent check-call note
   lastUpdateAt?: number;
   checkCalls?: CheckCall[];
+
+  // Paperwork tracking (metadata only — no file upload yet).
+  docs?: LoadDocs;
 
   notes?: string;
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { store } from "../data";
-import type { Load } from "../types";
+import type { DocKind, Load, LoadDocs } from "../types";
 
 const TRASH_WINDOW = 24 * 60 * 60 * 1000; // keep deleted loads visible for 24h
 
@@ -45,6 +45,16 @@ export function isDuplicateLoadNumber(loads: Load[], loadNumber: string, ignoreI
   const norm = loadNumber.trim().toLowerCase();
   if (!norm) return false;
   return loads.some((l) => l.id !== ignoreId && !l.deleted && l.loadNumber.trim().toLowerCase() === norm);
+}
+
+/** Toggle a document's received state on a load, stamping who/when. */
+export async function toggleDoc(load: Load, kind: DocKind, by: string): Promise<void> {
+  const cur = load.docs?.[kind];
+  const next: LoadDocs = {
+    ...(load.docs ?? {}),
+    [kind]: cur?.received ? { received: false } : { received: true, at: Date.now(), by },
+  };
+  await store.updateLoad(load.id, { docs: next });
 }
 
 // Re-export store mutations so existing call sites keep working unchanged.

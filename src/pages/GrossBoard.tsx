@@ -4,6 +4,7 @@ import { useLoads, createLoad, updateLoad, deleteLoad, restoreLoad, isDuplicateL
 import { useSettings } from "../hooks/useSettings";
 import { LoadFormModal } from "../components/LoadFormModal";
 import { BulkPasteModal } from "../components/BulkPasteModal";
+import { DocsBadge } from "../components/DocsBadge";
 import { StatusPill } from "../components/StatusPill";
 import { useToast } from "../components/Toast";
 import { can } from "../lib/permissions";
@@ -140,6 +141,7 @@ export function GrossBoard() {
                 <th>Broker</th>
                 <th>Pickup</th>
                 <th>Status</th>
+                <th>Docs</th>
                 <th>Dispatcher</th>
                 <th style={{ textAlign: "right" }}>Gross</th>
                 <th></th>
@@ -160,6 +162,9 @@ export function GrossBoard() {
                   <td className="mono">{shortDate(l.pickupDate)}</td>
                   <td>
                     <StatusPill status={l.status} />
+                  </td>
+                  <td>
+                    <DocsBadge docs={l.docs} />
                   </td>
                   <td className="muted">{l.dispatcherName}</td>
                   <td className="mono" style={{ textAlign: "right", fontWeight: 700 }}>

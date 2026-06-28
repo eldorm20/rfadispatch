@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { useLoads, addCheckCall, setLoadStatus } from "../hooks/useLoads";
+import { useLoads, addCheckCall, setLoadStatus, toggleDoc } from "../hooks/useLoads";
 import { useToast } from "../components/Toast";
+import { DocsBadge } from "../components/DocsBadge";
 import { can } from "../lib/permissions";
 import { money, relativeTime, shortDate } from "../lib/format";
 import { LOAD_STATUSES, STATUS_LABELS, type Load, type LoadStatus } from "../types";
@@ -59,6 +60,9 @@ export function UpdateBoard() {
                       </div>
                       <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
                         🚚 PU {shortDate(l.pickupDate)} · DEL {shortDate(l.deliveryDate)}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <DocsBadge docs={l.docs} />
                       </div>
                       {l.lastUpdate && (
                         <div style={{ fontSize: 12, marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--line)" }}>
@@ -156,6 +160,15 @@ function CheckCallModal({
             </div>
           </>
         )}
+
+        <div style={{ marginTop: 20 }}>
+          <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>
+            Documents
+          </label>
+          <div style={{ marginTop: 8 }}>
+            <DocsBadge docs={load.docs} onToggle={canUpdate ? (k) => void toggleDoc(load, k, byName) : undefined} />
+          </div>
+        </div>
 
         <div style={{ marginTop: 20 }}>
           <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>

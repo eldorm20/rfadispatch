@@ -5,6 +5,7 @@ export type ViewKey =
   | "dashboard"
   | "gross"
   | "updates"
+  | "documents"
   | "reports"
   | "accounting"
   | "trash"
@@ -22,6 +23,7 @@ export const NAV: NavItem[] = [
   { key: "dashboard", path: "/", label: "Dashboard", icon: "📊" },
   { key: "gross", path: "/gross", label: "Gross Board", icon: "💵" },
   { key: "updates", path: "/updates", label: "Update Board", icon: "📍" },
+  { key: "documents", path: "/documents", label: "Docs", icon: "📄" },
   { key: "reports", path: "/reports", label: "Reports", icon: "📅" },
   { key: "accounting", path: "/accounting", label: "Accounting", icon: "🧾" },
   { key: "trash", path: "/trash", label: "Trash", icon: "🗑" },
@@ -31,11 +33,11 @@ export const NAV: NavItem[] = [
 
 /** Which views each role can open. Managers/admins see everything. */
 const ACCESS: Record<Role, ViewKey[]> = {
-  dispatcher: ["dashboard", "gross", "updates", "reports"],
-  update_specialist: ["dashboard", "updates", "gross", "reports"],
-  manager: ["dashboard", "gross", "updates", "reports", "accounting", "trash", "admin", "settings"],
-  accounting: ["dashboard", "accounting", "gross", "reports"],
-  admin: ["dashboard", "gross", "updates", "reports", "accounting", "trash", "admin", "settings"],
+  dispatcher: ["dashboard", "gross", "updates", "documents", "reports"],
+  update_specialist: ["dashboard", "updates", "gross", "documents", "reports"],
+  manager: ["dashboard", "gross", "updates", "documents", "reports", "accounting", "trash", "admin", "settings"],
+  accounting: ["dashboard", "accounting", "gross", "documents", "reports"],
+  admin: ["dashboard", "gross", "updates", "documents", "reports", "accounting", "trash", "admin", "settings"],
 };
 
 export function canAccess(role: Role, view: ViewKey): boolean {
@@ -53,6 +55,7 @@ export function can(role: Role) {
     bookLoads: role === "dispatcher" || isManager,
     editAnyLoad: isManager,
     addCheckCalls: role === "update_specialist" || role === "dispatcher" || isManager,
+    editDocs: true, // any signed-in team member can update paperwork status
     markInvoiced: role === "accounting" || isManager,
     manageTeam: isManager,
     editSettings: isManager,
