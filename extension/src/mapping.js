@@ -29,6 +29,7 @@
 
   function mapStop(s) {
     const loc = s.location || {};
+    const instr = [].concat(s.pickupInstructions || [], s.deliveryInstructions || []).filter(Boolean);
     return {
       type: s.stopType || "STOP",
       label: loc.label,
@@ -36,22 +37,50 @@
       city: loc.city,
       state: loc.state,
       postalCode: loc.postalCode,
-      arrival: s.arrivalTime || undefined,
-      departure: s.departureTime || undefined,
+      scheduledArrival: s.calculatedEstimateArrivalTime || s.originalScheduledArrivalTime || undefined,
       category: loc.locationCategory,
+      loadingType: s.loadingType || s.unloadingType || undefined,
+      instructions: instr.length ? instr : undefined,
+      specialServices: s.specialServices && s.specialServices.length ? s.specialServices : undefined,
+      earlyCheckInNotAllowed: s.isEarlyCheckInNotAllowed || undefined,
     };
+  }
+
+  function buildRoute(loads) {
+    const stops = [];
+    const services = new Set();
+    let maxWeight = 0;
+    (loads || []).forEach((leg) => {
+      (leg.specialServices || []).forEach((s) => services.add(s));
+      maxWeight = Math.max(maxWeight, (leg.weight && leg.weight.value) || 0);
+      (leg.stops || []).forEach((rs) => {
+        const m = mapStop(rs);
+        (m.specialServices || []).forEach((s) => services.add(s));
+        const prev = stops[stops.length - 1];
+        if (prev && prev.label && prev.label === m.label && prev.type !== "PICKUP") {
+          if (m.instructions) prev.instructions = m.instructions;
+          return;
+        }
+        stops.push(m);
+      });
+    });
+    return { stops, specialServices: Array.from(services), maxWeight };
   }
 
   const isoDate = (iso) => (iso ? iso.slice(0, 10) : "");
 
   function mapEntity(e) {
     if (!e || !e.id) return null;
-    const load = (e.loads && e.loads[0]) || {};
-    const stops = load.stops || [];
-    const driver = (e.drivers && e.drivers[0]) || (load.driverList && load.driverList[0]);
+    const legs = e.loads || [];
+    const loaded = legs.find((l) => ((l.weight && l.weight.value) || 0) > 0) || legs[0] || {};
+    const driver = (e.drivers && e.drivers[0]) || (legs[0] && legs[0].driverList && legs[0].driverList[0]);
     const driverName = driver ? ((driver.firstName || "") + " " + (driver.lastName || "")).trim() : "";
     const miles = Math.round((e.totalDistance && e.totalDistance.value) || 0) || undefined;
     const gross = (e.payout && e.payout.value) || 0;
+    const route = buildRoute(legs);
+    const first = route.stops[0] || {};
+    const last = route.stops[route.stops.length - 1] || {};
+    const cs = (s) => (s.city ? (s.city + ", " + (s.state || "")).replace(/, $/, "") : s.label || "");
     return {
       loadNumber: e.id,
       source: "amazon",
@@ -59,11 +88,11 @@
       carrier: "",
       driver: driverName,
       driverPhone: (driver && driver.phoneNumber) || "",
-      origin: cityState(stops[0]),
-      destination: cityState(stops[stops.length - 1]),
+      origin: cs(first),
+      destination: cs(last),
       pickupDate: isoDate(e.firstPickupTime),
       deliveryDate: isoDate(e.lastDeliveryTime),
-      equipment: mapEquipment(load.equipmentType),
+      equipment: mapEquipment(loaded.equipmentType),
       miles,
       gross,
       status: mapStatus(e),
@@ -78,7 +107,10 @@
         contractId: e.contractId,
         domicileRoute: e.domicileRoute,
         ratePerMile: miles ? Math.round((gross / miles) * 100) / 100 : undefined,
-        stops: stops.map(mapStop),
+        legs: legs.length,
+        maxWeight: route.maxWeight || undefined,
+        specialServices: route.specialServices.length ? route.specialServices : undefined,
+        stops: route.stops,
       },
     };
   }

@@ -12,8 +12,15 @@ export type RelayImportedLoad = NewLoadInput & { amazon: NonNullable<NewLoadInpu
 
 interface RawStop {
   stopType?: string;
-  arrivalTime?: string | null;
-  departureTime?: string | null;
+  stopSequenceNumber?: number;
+  calculatedEstimateArrivalTime?: string | null;
+  originalScheduledArrivalTime?: string | null;
+  loadingType?: string | null;
+  unloadingType?: string | null;
+  isEarlyCheckInNotAllowed?: boolean;
+  pickupInstructions?: string[];
+  deliveryInstructions?: string[];
+  specialServices?: string[];
   location?: {
     label?: string;
     line1?: string;
@@ -49,6 +56,8 @@ interface RawEntity {
     equipmentType?: string;
     stops?: RawStop[];
     driverList?: RawDriver[];
+    specialServices?: string[];
+    weight?: { value?: number; unit?: string } | null;
   }>;
 }
 
@@ -80,6 +89,7 @@ function cityState(s?: RawStop): string {
 }
 
 function mapStop(s: RawStop): RelayStop {
+  const instructions = [...(s.pickupInstructions ?? []), ...(s.deliveryInstructions ?? [])].filter(Boolean);
   return {
     type: s.stopType || "STOP",
     label: s.location?.label,
@@ -87,10 +97,36 @@ function mapStop(s: RawStop): RelayStop {
     city: s.location?.city,
     state: s.location?.state,
     postalCode: s.location?.postalCode,
-    arrival: s.arrivalTime ?? undefined,
-    departure: s.departureTime ?? undefined,
+    scheduledArrival: s.calculatedEstimateArrivalTime ?? s.originalScheduledArrivalTime ?? undefined,
     category: s.location?.locationCategory,
+    loadingType: s.loadingType ?? s.unloadingType ?? undefined,
+    instructions: instructions.length ? instructions : undefined,
+    specialServices: s.specialServices?.length ? s.specialServices : undefined,
+    earlyCheckInNotAllowed: s.isEarlyCheckInNotAllowed || undefined,
   };
+}
+
+/** Flatten all legs into one deduped route (a leg's dropoff == next leg's pickup). */
+function buildRoute(loads: RawEntity["loads"]): { stops: RelayStop[]; specialServices: string[]; maxWeight: number } {
+  const stops: RelayStop[] = [];
+  const services = new Set<string>();
+  let maxWeight = 0;
+  (loads ?? []).forEach((leg) => {
+    (leg.specialServices ?? []).forEach((s) => services.add(s));
+    maxWeight = Math.max(maxWeight, leg.weight?.value ?? 0);
+    (leg.stops ?? []).forEach((rs) => {
+      const m = mapStop(rs);
+      m.specialServices?.forEach((s) => services.add(s));
+      const prev = stops[stops.length - 1];
+      // skip the duplicate handoff stop shared between consecutive legs
+      if (prev && prev.label && prev.label === m.label && prev.type !== "PICKUP") {
+        if (m.instructions) prev.instructions = m.instructions;
+        return;
+      }
+      stops.push(m);
+    });
+  });
+  return { stops, specialServices: [...services], maxWeight };
 }
 
 function isoDate(iso?: string): string {
@@ -100,12 +136,14 @@ function isoDate(iso?: string): string {
 /** Map a single Relay entity (tour/trip) to a TMS load input. */
 export function mapEntity(e: RawEntity): RelayImportedLoad | null {
   if (!e?.id) return null;
-  const load = e.loads?.[0];
-  const stops = load?.stops ?? [];
-  const driver = e.drivers?.[0] || load?.driverList?.[0];
+  const legs = e.loads ?? [];
+  // equipment from the first loaded leg if possible, else the first leg
+  const loaded = legs.find((l) => (l.weight?.value ?? 0) > 0) || legs[0];
+  const driver = e.drivers?.[0] || legs[0]?.driverList?.[0];
   const driverName = driver ? `${driver.firstName ?? ""} ${driver.lastName ?? ""}`.trim() : "";
   const miles = Math.round(e.totalDistance?.value ?? 0) || undefined;
   const gross = e.payout?.value ?? 0;
+  const { stops, specialServices, maxWeight } = buildRoute(legs);
 
   return {
     loadNumber: e.id,
@@ -116,11 +154,11 @@ export function mapEntity(e: RawEntity): RelayImportedLoad | null {
     driver: driverName,
     driverPhone: driver?.phoneNumber ?? "",
     truck: "",
-    origin: cityState(stops[0]),
-    destination: cityState(stops[stops.length - 1]),
+    origin: cityState({ location: { city: stops[0]?.city, state: stops[0]?.state, label: stops[0]?.label } } as RawStop),
+    destination: cityState({ location: { city: stops[stops.length - 1]?.city, state: stops[stops.length - 1]?.state, label: stops[stops.length - 1]?.label } } as RawStop),
     pickupDate: isoDate(e.firstPickupTime),
     deliveryDate: isoDate(e.lastDeliveryTime),
-    equipment: mapEquipment(load?.equipmentType),
+    equipment: mapEquipment(loaded?.equipmentType),
     miles,
     gross,
     status: mapRelayStatus(e),
@@ -136,7 +174,10 @@ export function mapEntity(e: RawEntity): RelayImportedLoad | null {
       contractId: e.contractId,
       domicileRoute: e.domicileRoute,
       ratePerMile: miles ? Math.round((gross / miles) * 100) / 100 : undefined,
-      stops: stops.map(mapStop),
+      legs: legs.length,
+      maxWeight: maxWeight || undefined,
+      specialServices: specialServices.length ? specialServices : undefined,
+      stops,
     },
   };
 }

@@ -124,15 +124,18 @@ export type LoadSource = "manual" | "amazon";
 
 /** A stop on an Amazon Relay trip (pickup/delivery) — drives the Update Board route view. */
 export interface RelayStop {
-  type: string; // PICKUP | DELIVERY | ...
+  type: string; // PICKUP | DROPOFF | ...
   label?: string; // facility code e.g. DAL2
   line1?: string;
   city?: string;
   state?: string;
   postalCode?: string;
-  arrival?: string; // ISO
-  departure?: string; // ISO
-  category?: string; // locationCategory (e.g. restricted/sort center)
+  scheduledArrival?: string; // ISO (calculatedEstimateArrivalTime)
+  category?: string; // locationCategory (e.g. SORTABLE / FACILITY)
+  loadingType?: string; // PRELOADED / LIVE
+  instructions?: string[]; // pickup or delivery instructions
+  specialServices?: string[]; // e.g. SWING_DOOR
+  earlyCheckInNotAllowed?: boolean;
 }
 
 /** Amazon-specific metadata kept on an imported load (raw bits the boards don't model generically). */
@@ -147,7 +150,10 @@ export interface AmazonMeta {
   contractId?: string;
   domicileRoute?: string; // e.g. MCO5->OAK5
   ratePerMile?: number;
-  stops?: RelayStop[];
+  legs?: number; // number of load legs in the tour
+  maxWeight?: number; // heaviest leg, in lbs
+  specialServices?: string[]; // union across the tour, e.g. SWING_DOOR
+  stops?: RelayStop[]; // full route (deduped across legs)
 }
 
 export interface Load {

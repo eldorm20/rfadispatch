@@ -5,7 +5,80 @@ import { useToast } from "../components/Toast";
 import { DocsBadge } from "../components/DocsBadge";
 import { can } from "../lib/permissions";
 import { money, relativeTime, shortDate } from "../lib/format";
-import { LOAD_STATUSES, STATUS_LABELS, type Load, type LoadStatus } from "../types";
+import { LOAD_STATUSES, STATUS_LABELS, type Load, type LoadStatus, type RelayStop } from "../types";
+
+const SERVICE_LABELS: Record<string, string> = {
+  SWING_DOOR: "Swing Door",
+  TEAM_DRIVER: "Team Driver",
+  HAZMAT: "Hazmat",
+  TWIC: "TWIC",
+  LIFTGATE: "Liftgate",
+};
+const svcLabel = (s: string) => SERVICE_LABELS[s] ?? s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
+function ServiceChips({ load }: { load: Load }) {
+  const svc = load.amazon?.specialServices ?? [];
+  if (!svc.length) return null;
+  return (
+    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+      {svc.map((s) => (
+        <span key={s} style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", background: "rgba(250,204,21,0.14)", padding: "2px 6px", borderRadius: 6 }}>
+          ⚠ {svcLabel(s)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function fmtSched(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function RouteTimeline({ stops }: { stops: RelayStop[] }) {
+  return (
+    <div className="grid" style={{ gap: 0, marginTop: 8 }}>
+      {stops.map((s, i) => {
+        const isPickup = s.type === "PICKUP";
+        return (
+          <div key={i} style={{ display: "flex", gap: 10, paddingBottom: 12, position: "relative" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: isPickup ? "var(--teal-2)" : "var(--green)", marginTop: 3 }} />
+              {i < stops.length - 1 && <span style={{ flex: 1, width: 2, background: "var(--line)" }} />}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="spread">
+                <span style={{ fontSize: 13 }}>
+                  <strong>{s.label || `${s.city ?? ""}`}</strong>{" "}
+                  <span className="muted" style={{ fontSize: 11 }}>{isPickup ? "Pickup" : "Drop"}</span>
+                </span>
+                <span className="muted mono" style={{ fontSize: 11 }}>{fmtSched(s.scheduledArrival)}</span>
+              </div>
+              <div className="muted" style={{ fontSize: 12 }}>
+                {[s.city && `${s.city}, ${s.state ?? ""}`, s.loadingType].filter(Boolean).join(" · ")}
+              </div>
+              {(s.specialServices?.length || s.earlyCheckInNotAllowed) && (
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                  {s.specialServices?.map((sv) => (
+                    <span key={sv} style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", background: "rgba(250,204,21,0.14)", padding: "1px 6px", borderRadius: 6 }}>⚠ {svcLabel(sv)}</span>
+                  ))}
+                  {s.earlyCheckInNotAllowed && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--red)", background: "rgba(248,113,113,0.14)", padding: "1px 6px", borderRadius: 6 }}>No early check-in</span>
+                  )}
+                </div>
+              )}
+              {s.instructions?.map((ins, k) => (
+                <div key={k} className="muted" style={{ fontSize: 11, marginTop: 3, fontStyle: "italic" }}>📋 {ins}</div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // Columns shown on the update board (terminal states get their own lane at the end).
 const LANES: LoadStatus[] = ["booked", "dispatched", "in_transit", "delivered"];
@@ -61,6 +134,7 @@ export function UpdateBoard() {
                       <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
                         🚚 PU {shortDate(l.pickupDate)} · DEL {shortDate(l.deliveryDate)}
                       </div>
+                      <ServiceChips load={l} />
                       <div style={{ marginTop: 8 }}>
                         <DocsBadge docs={l.docs} />
                       </div>
@@ -160,6 +234,22 @@ function CheckCallModal({
             </div>
           </>
         )}
+
+        {load.amazon?.stops?.length ? (
+          <div style={{ marginTop: 18 }}>
+            <div className="spread">
+              <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>
+                Route · {load.amazon.stops.length} stops
+              </label>
+              <span className="muted" style={{ fontSize: 11 }}>
+                {load.amazon.ratePerMile ? `$${load.amazon.ratePerMile}/mi` : ""}
+                {load.amazon.maxWeight ? ` · ${load.amazon.maxWeight.toLocaleString()} lb` : ""}
+                {load.amazon.legs && load.amazon.legs > 1 ? ` · ${load.amazon.legs} legs` : ""}
+              </span>
+            </div>
+            <RouteTimeline stops={load.amazon.stops} />
+          </div>
+        ) : null}
 
         <div style={{ marginTop: 20 }}>
           <label className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>

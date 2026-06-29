@@ -153,6 +153,46 @@ function seedLoads(): Load[] {
       n++;
     }
   }
+
+  // A couple of Amazon-sourced trips so the Update Board route view + restrictions show in demo.
+  const disp = DEMO_DISPATCHERS[0];
+  const now = Date.now();
+  out.unshift({
+    id: uid(),
+    loadNumber: "T-11596W6S3",
+    source: "amazon",
+    broker: "Amazon Relay",
+    carrier: "",
+    driver: "Khurshed Amirdinov",
+    driverPhone: "+1 (412) 689-2705",
+    origin: "Dallas, TX",
+    destination: "Richmond, VA",
+    pickupDate: daysAgoISO(0),
+    deliveryDate: daysAgoISO(-2),
+    equipment: "van",
+    miles: 1353,
+    gross: 4611,
+    dispatcherId: disp.uid,
+    dispatcherName: disp.name,
+    status: "in_transit",
+    checkCalls: [{ ts: now - 3600000, by: "Sam", note: "Loaded at DAL2, rolling", status: "in_transit" }],
+    lastUpdate: "Loaded at DAL2, rolling",
+    lastUpdateAt: now - 3600000,
+    docs: { rate_con: { received: true, at: now, by: "Sam" } },
+    amazon: {
+      tourId: "T-11596W6S3", version: 5, tourState: "active", workType: "SPOT", transitOperatorType: "TEAM_DRIVER",
+      ratePerMile: 3.41, legs: 3, maxWeight: 90000, specialServices: ["SWING_DOOR"],
+      stops: [
+        { type: "PICKUP", label: "DAL2", city: "Dallas", state: "TX", scheduledArrival: new Date(now + 3 * 3600000).toISOString(), loadingType: "PRELOADED", category: "SORTABLE" },
+        { type: "DROPOFF", label: "PANTOS_76247", city: "Northlake", state: "TX", scheduledArrival: new Date(now + 5 * 3600000).toISOString(), loadingType: "DROP" },
+        { type: "DROPOFF", label: "LOWE_S_23234", city: "Richmond", state: "VA", scheduledArrival: new Date(now + 40 * 3600000).toISOString(), loadingType: "DROP", specialServices: ["SWING_DOOR"], instructions: ["Swing door trailer required at this stop"] },
+        { type: "DROPOFF", label: "RIC4", city: "Richmond", state: "VA", scheduledArrival: new Date(now + 42 * 3600000).toISOString(), loadingType: "DROP", earlyCheckInNotAllowed: true },
+      ],
+    },
+    createdAt: now - 7200000,
+    updatedAt: now - 3600000,
+  } as Load);
+
   return out;
 }
 
