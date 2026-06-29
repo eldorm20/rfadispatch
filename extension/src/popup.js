@@ -22,8 +22,21 @@ async function render() {
   document.getElementById("lastCount").textContent = stats.lastCount != null ? stats.lastCount + " loads" : "—";
   document.getElementById("cu").textContent =
     stats.created != null ? `${stats.created} / ${stats.updated}` : "—";
+  document.getElementById("lastPoll").textContent = stats.lastPollError
+    ? `error (${stats.lastPollError})`
+    : ago(stats.lastPollAt);
   document.getElementById("err").textContent = stats.lastError || "";
 }
+
+document.getElementById("syncNow").addEventListener("click", () => {
+  const b = document.getElementById("syncNow");
+  b.textContent = "Syncing…";
+  chrome.runtime.sendMessage({ type: "RFA_POLL_NOW" }, (r) => {
+    void chrome.runtime.lastError;
+    b.textContent = r && r.ok ? "Synced ✓" : r && r.reason === "no-request-captured" ? "Open Relay Trips first" : "Failed";
+    setTimeout(() => { b.textContent = "↻ Sync now"; render(); }, 1800);
+  });
+});
 
 document.getElementById("opts").addEventListener("click", (e) => {
   e.preventDefault();

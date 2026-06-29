@@ -1,4 +1,4 @@
-const FIELDS = ["projectId", "apiKey", "syncEmail", "syncPassword", "dispatcherName"];
+const FIELDS = ["projectId", "apiKey", "syncEmail", "syncPassword", "dispatcherName", "pollMinutes"];
 
 async function load() {
   const cfg = await chrome.storage.local.get(FIELDS);

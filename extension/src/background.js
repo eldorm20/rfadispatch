@@ -1,7 +1,14 @@
-/* Service worker: receives mapped loads from content.js and upserts them into
-   the same Firestore the TMS web app reads. Auth via Firebase Email/Password
-   (a dedicated sync account). If Firebase isn't configured yet, it buffers a
-   count so the popup can show capture is working. */
+/* Service worker: maps captured Relay data and upserts it into the same
+   Firestore the TMS web app reads. Auth via Firebase Email/Password (a
+   dedicated sync account). Two paths:
+     - PASSIVE: content.js forwards raw entitiesV2 whenever Relay is open
+     - POLLING: we replay the captured Trips request on a timer (chrome.alarms)
+       so trips keep syncing even when nobody is looking at the Relay tab.
+   If Firebase isn't configured, it records a capture count for the popup. */
+import { mapRelayResponse } from "./relayMap.mjs";
+
+const POLL_ALARM = "rfa-poll";
+const DEFAULT_POLL_MIN = 5;
 
 const FS_FIELDS_NEW = [
   "loadNumber", "source", "broker", "carrier", "driver", "driverPhone", "origin",
@@ -115,11 +122,62 @@ async function syncLoads(loads) {
   return { ok: true, created, updated };
 }
 
+/* ---- Background polling: replay the captured Trips request on a timer ---- */
+async function pollNow() {
+  const { tripsRequest } = await chrome.storage.local.get("tripsRequest");
+  if (!tripsRequest || !tripsRequest.url) return { ok: false, reason: "no-request-captured" };
+  let res;
+  try {
+    res = await fetch(tripsRequest.url, {
+      method: tripsRequest.method || "POST",
+      headers: tripsRequest.headers || {},
+      body: tripsRequest.body,
+      credentials: "include",
+    });
+  } catch (e) {
+    await setStats({ lastPollError: "network", lastPollAt: Date.now() });
+    return { ok: false, error: String(e) };
+  }
+  if (!res.ok) {
+    // 401/403 → token stale; wait for the next live page interaction to refresh it
+    await setStats({ lastPollError: res.status, lastPollAt: Date.now() });
+    return { ok: false, status: res.status };
+  }
+  const json = await res.json();
+  const loads = mapRelayResponse(json);
+  await setStats({ lastPollAt: Date.now() });
+  return await syncLoads(loads);
+}
+
+async function ensureAlarm() {
+  const { pollMinutes } = await chrome.storage.local.get("pollMinutes");
+  const mins = Math.max(1, Number(pollMinutes) || DEFAULT_POLL_MIN);
+  chrome.alarms.create(POLL_ALARM, { periodInMinutes: mins });
+}
+
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name === POLL_ALARM) pollNow().catch(() => {});
+});
+chrome.runtime.onInstalled.addListener(() => ensureAlarm());
+chrome.runtime.onStartup.addListener(() => ensureAlarm());
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type === "RFA_LOADS") {
-    syncLoads(msg.loads)
+  if (msg?.type === "RFA_TRIPS_RAW") {
+    syncLoads(mapRelayResponse(msg.payload))
       .then((r) => sendResponse(r))
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
-    return true; // async response
+    return true;
+  }
+  if (msg?.type === "RFA_TRIPS_REQUEST") {
+    // store the latest request so polling can replay it, and (re)arm the alarm
+    chrome.storage.local.set({ tripsRequest: msg.request }).then(ensureAlarm);
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (msg?.type === "RFA_POLL_NOW") {
+    pollNow()
+      .then((r) => sendResponse(r))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
   }
 });

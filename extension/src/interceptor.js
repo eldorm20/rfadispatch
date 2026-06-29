@@ -19,13 +19,34 @@
     }
   }
 
+  // Capture the exact request (URL + headers incl. x-csrf-token + body) so the
+  // background worker can replay it on a timer for hands-off polling.
+  function forwardRequest(url, init) {
+    try {
+      const headers = {};
+      const h = init && init.headers;
+      if (h instanceof Headers) h.forEach((v, k) => (headers[k] = v));
+      else if (Array.isArray(h)) h.forEach(([k, v]) => (headers[k] = v));
+      else if (h && typeof h === "object") Object.assign(headers, h);
+      window.postMessage(
+        { __rfa: true, key: "trips-request", request: { url, method: (init && init.method) || "POST", headers, body: init && init.body } },
+        window.location.origin
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   // --- fetch ---
   const origFetch = window.fetch;
   window.fetch = async function (...args) {
+    const url = typeof args[0] === "string" ? args[0] : args[0]?.url;
+    const t = matchOf(url);
+    if (t && t.key === "trips" && typeof args[1] === "object" && typeof args[1].body === "string") {
+      forwardRequest(url, args[1]);
+    }
     const res = await origFetch.apply(this, args);
     try {
-      const url = typeof args[0] === "string" ? args[0] : args[0]?.url;
-      const t = matchOf(url);
       if (t && res.ok) {
         res
           .clone()

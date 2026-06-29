@@ -7,14 +7,20 @@ the way LoadFetcher does) and syncs them into the RFA Dispatch TMS.
 
 ```
 relay.amazon.com (your session)
-  └─ interceptor.js  (MAIN world) ── wraps fetch/XHR, reads /api/tours/entitiesV2 responses
-       └─ content.js (isolated)    ── maps each trip → TMS load (mapping.js)
-            └─ background.js        ── upserts into Firestore  ── TMS web app updates live
+  └─ interceptor.js (MAIN world) ── wraps fetch/XHR; reads /api/tours/entitiesV2
+       │                            responses AND captures the request (incl. csrf token)
+       └─ content.js (isolated)   ── relays raw data to the background worker
+            └─ background.js       ── maps (relayMap.mjs) → upserts to Firestore → TMS updates live
+                 └─ chrome.alarms  ── replays the captured Trips request on a timer (polling)
 ```
 
-It is **read-only** against Relay — it never modifies requests, books, or clicks
-anything. It only reads the trip data your browser already downloaded, so there's
-no extra load on Amazon and no CSRF/token handling.
+Two sync paths:
+- **Passive** — whenever a Relay tab loads/refreshes, trips sync automatically.
+- **Polling** — the worker replays the captured Trips request every few minutes
+  (configurable) so trips keep syncing even when nobody's looking at Relay. If the
+  csrf token goes stale (401/403), it resumes on the next live page interaction.
+
+It is **read-only** against Relay — it never books, accepts, or clicks anything.
 
 ## Install (unpacked)
 
@@ -25,6 +31,7 @@ no extra load on Amazon and no CSRF/token handling.
    - a **sync account** email + password — a Firebase Auth (Email/Password) user you
      create in the Firebase console, allowed to write by your Firestore rules
    - a display name to attribute imported loads to (e.g. "Amazon Sync")
+   - **background poll interval** in minutes (default 5)
 4. Open `relay.amazon.com` → **Trips**. As the page loads/refreshes, trips sync.
    The toolbar popup shows last-sync time, batch size, and created/updated counts.
 
@@ -37,7 +44,7 @@ use the app's **Gross Board → ⬇ Import Amazon** (paste the `entitiesV2` JSON
 
 ## Field mapping
 
-Mirrors the app's `src/lib/relayMapping.ts` (kept in sync as `src/mapping.js`):
+Mirrors the app's `src/lib/relayMapping.ts` (kept in sync as `src/relayMap.mjs`):
 `entity.id`→loadNumber, `payout.value`→gross, stops→origin/destination, drivers[0]→
 driver/phone, `firstPickupTime`/`lastDeliveryTime`→dates, `equipmentType`→equipment,
 `tourState`/`executionStatus`→status, plus `amazon` metadata (stops, contract, version,

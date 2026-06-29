@@ -3,7 +3,7 @@
   "name": "RFA Dispatch — Amazon Relay Sync",
   "version": "0.1.0",
   "description": "Captures Amazon Relay trips in your authenticated session and syncs them to the RFA Dispatch TMS in real time.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms"],
   "host_permissions": [
     "https://relay.amazon.com/*",
     "https://firestore.googleapis.com/*",
@@ -19,7 +19,7 @@
     },
     {
       "matches": ["https://relay.amazon.com/*"],
-      "js": ["src/mapping.js", "src/content.js"],
+      "js": ["src/content.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
     }
