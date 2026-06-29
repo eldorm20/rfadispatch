@@ -1,36 +1,54 @@
 rules_version = '2';
 
-// Firestore security rules for Dispatch TMS.
-// Paste into Firebase Console → Firestore Database → Rules, or deploy with the Firebase CLI.
+// Firestore security rules for Dispatch TMS — single-tenant (production beta).
+// Paste into Firebase Console → Firestore Database → Rules, or deploy with the CLI.
+//
+// BOOTSTRAP: the first user can't make themselves admin through the app (rules
+// below forbid self-promotion). After your first sign-in, open Firestore →
+// users/{your-uid} and set role to "admin" once. From then on, managers/admins
+// assign roles in the Team page.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function myRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-    }
-    function isManager() {
-      return signedIn() && (myRole() == 'manager' || myRole() == 'admin');
-    }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function myRole() { return me().role; }
+    function isManager() { return signedIn() && (myRole() == 'manager' || myRole() == 'admin'); }
+    function isAccounting() { return signedIn() && (myRole() == 'accounting' || isManager()); }
+    function roleUnchanged() { return request.resource.data.role == resource.data.role; }
 
-    // User profiles. A user can read the directory and create/read their own doc;
-    // only managers/admins can change someone's role.
+    // User profiles. Anyone signed in can read the directory (needed for team/audit
+    // views). You may create your own doc but NOT as a manager/admin (no self-promotion).
+    // You may edit your own profile but not your own role; managers can change roles.
     match /users/{uid} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.auth.uid == uid;
-      allow update: if signedIn() && (request.auth.uid == uid || isManager());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role in ['dispatcher', 'update_specialist', 'accounting'];
+      allow update: if isManager() || (signedIn() && request.auth.uid == uid && roleUnchanged());
       allow delete: if isManager();
     }
 
-    // Loads — any signed-in team member can read and write.
-    // (Field-level role enforcement is handled in the app; tighten here later if needed.)
+    // Loads — any signed-in team member can read, book and edit (incl. soft-delete,
+    // which is an update). Only managers can permanently purge from Trash.
     match /loads/{loadId} {
       allow read: if signedIn();
       allow create, update: if signedIn();
-      allow delete: if signedIn();
+      allow delete: if isManager();
     }
 
-    // Org-wide settings (commission %, goals). Anyone signed in reads; managers write.
+    // Carrier invoices — accounting and managers only.
+    match /invoices/{invoiceId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAccounting();
+    }
+
+    // Driver roster — any signed-in team member can manage.
+    match /drivers/{driverId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn();
+    }
+
+    // Org-wide settings (commission %, goal, baseline). Anyone reads; managers write.
     match /org/{docId} {
       allow read: if signedIn();
       allow write: if isManager();
