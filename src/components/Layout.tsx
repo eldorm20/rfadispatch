@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { navForRole } from "../lib/permissions";
 import { initials } from "../lib/format";
@@ -9,7 +9,7 @@ import { DemoBanner } from "./DemoBanner";
 export function Layout() {
   const { user, signOut, demo } = useAuth();
   const navigate = useNavigate();
-  if (!user) return null;
+  if (!user) return <Navigate to="/login" replace />;
   const nav = navForRole(user.role);
 
   return (
