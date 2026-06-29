@@ -122,6 +122,34 @@ export interface CheckCall {
 /** Where a load came from. Amazon-only for now; structured so other boards can be added later. */
 export type LoadSource = "manual" | "amazon";
 
+/** A stop on an Amazon Relay trip (pickup/delivery) — drives the Update Board route view. */
+export interface RelayStop {
+  type: string; // PICKUP | DELIVERY | ...
+  label?: string; // facility code e.g. DAL2
+  line1?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  arrival?: string; // ISO
+  departure?: string; // ISO
+  category?: string; // locationCategory (e.g. restricted/sort center)
+}
+
+/** Amazon-specific metadata kept on an imported load (raw bits the boards don't model generically). */
+export interface AmazonMeta {
+  tourId: string;
+  version: number; // entity.version — bump means update; used to dedupe/refresh
+  tourState?: string;
+  executionStatus?: string;
+  workType?: string; // SPOT | TENDERED
+  businessType?: string; // PER_LOAD | ...
+  transitOperatorType?: string; // TEAM_DRIVER | SOLO
+  contractId?: string;
+  domicileRoute?: string; // e.g. MCO5->OAK5
+  ratePerMile?: number;
+  stops?: RelayStop[];
+}
+
 export interface Load {
   id: string;
 
@@ -163,6 +191,9 @@ export interface Load {
 
   // Accounting: set once this load has been put on a carrier invoice.
   invoiceId?: string | null;
+
+  // Set when source === "amazon" — raw Relay trip metadata (stops, contract, version).
+  amazon?: AmazonMeta;
 
   notes?: string;
 

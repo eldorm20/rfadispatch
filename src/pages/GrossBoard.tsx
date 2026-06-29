@@ -4,6 +4,7 @@ import { useLoads, createLoad, updateLoad, deleteLoad, restoreLoad, isDuplicateL
 import { useSettings } from "../hooks/useSettings";
 import { LoadFormModal } from "../components/LoadFormModal";
 import { BulkPasteModal } from "../components/BulkPasteModal";
+import { RelayImportModal } from "../components/RelayImportModal";
 import { DocsBadge } from "../components/DocsBadge";
 import { StatusPill } from "../components/StatusPill";
 import { useToast } from "../components/Toast";
@@ -20,6 +21,7 @@ export function GrossBoard() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [relayOpen, setRelayOpen] = useState(false);
   const [editing, setEditing] = useState<Load | null>(null);
   const [statusFilter, setStatusFilter] = useState<LoadStatus | "all">("all");
   const [searchq, setSearchq] = useState("");
@@ -87,6 +89,9 @@ export function GrossBoard() {
         </div>
         {perms?.bookLoads && (
           <div className="row" style={{ flex: "0 0 auto" }}>
+            <button className="btn" onClick={() => setRelayOpen(true)} title="Import trips from Amazon Relay">
+              ⬇ Import Amazon
+            </button>
             <button className="btn" onClick={() => setBulkOpen(true)} title="Paste multiple rows from a spreadsheet">
               📋 Paste rows
             </button>
@@ -202,6 +207,8 @@ export function GrossBoard() {
       )}
 
       {bulkOpen && <BulkPasteModal existing={loads} onClose={() => setBulkOpen(false)} />}
+
+      {relayOpen && <RelayImportModal existing={loads} onClose={() => setRelayOpen(false)} />}
     </div>
   );
 }
