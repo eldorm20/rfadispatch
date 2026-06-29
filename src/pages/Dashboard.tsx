@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from "react";
 import { useLoads } from "../hooks/useLoads";
 import { useSettings } from "../hooks/useSettings";
 import { useUsers } from "../hooks/useUsers";
-import { StatusPill } from "../components/StatusPill";
 import { money, todayISO } from "../lib/format";
 import { fireConfetti, playFanfare } from "../lib/celebrate";
 import type { Load } from "../types";
@@ -180,9 +179,9 @@ export function Dashboard() {
         {audit.length === 0 ? (
           <p className="muted" style={{ fontSize: 13 }}>No loads booked today yet.</p>
         ) : (
-          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
+          <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8, alignItems: "flex-start" }}>
             {audit.map((t) => (
-              <div key={t.team} className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <div key={t.team} className="card" style={{ padding: 0, overflow: "hidden", flex: "1 1 0", minWidth: 240 }}>
                 <div
                   className="spread"
                   style={{ padding: "12px 16px", background: "rgba(45,212,191,0.08)", borderBottom: "1px solid var(--line-strong)" }}
@@ -211,8 +210,7 @@ export function Dashboard() {
                           <span className="muted" style={{ flex: 1, margin: "0 8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {l.origin} → {l.destination}
                           </span>
-                          <StatusPill status={l.status} />
-                          <span className="mono" style={{ marginLeft: 8, fontWeight: 700 }}>{money(l.gross)}</span>
+                          <span className="mono" style={{ marginLeft: 8, fontWeight: 700, color: "var(--green)" }}>{money(l.gross)}</span>
                         </div>
                       ))}
                     </div>

@@ -41,7 +41,9 @@ body {
 }
 
 a { color: var(--teal-2); text-decoration: none; }
-button { font-family: var(--font); }
+/* Inherit theme text by default so <button>-based cards aren't black.
+   The .btn variants set their own color and win on specificity. */
+button { font-family: var(--font); color: inherit; }
 
 /* ---- Aurora background ---- */
 .aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
