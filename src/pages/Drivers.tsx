@@ -3,8 +3,8 @@ import { useDrivers, createDriver, updateDriver, deleteDriver } from "../hooks/u
 import { useToast } from "../components/Toast";
 import type { Driver } from "../types";
 
-type Form = { name: string; phone: string; carrier: string; truck: string; notes: string };
-const EMPTY: Form = { name: "", phone: "", carrier: "", truck: "", notes: "" };
+type Form = { name: string; phone: string; carrier: string; truck: string; unit: string; telegramChatId: string; notes: string };
+const EMPTY: Form = { name: "", phone: "", carrier: "", truck: "", unit: "", telegramChatId: "", notes: "" };
 
 export function Drivers() {
   const { drivers, loading } = useDrivers();
@@ -21,7 +21,7 @@ export function Drivers() {
     setModal({ form: { ...EMPTY } });
   }
   function openEdit(d: Driver) {
-    setModal({ id: d.id, form: { name: d.name, phone: d.phone ?? "", carrier: d.carrier ?? "", truck: d.truck ?? "", notes: d.notes ?? "" } });
+    setModal({ id: d.id, form: { name: d.name, phone: d.phone ?? "", carrier: d.carrier ?? "", truck: d.truck ?? "", unit: d.unit ?? "", telegramChatId: d.telegramChatId ?? "", notes: d.notes ?? "" } });
   }
 
   async function save() {
@@ -129,6 +129,14 @@ export function Drivers() {
               <div className="field">
                 <label>Truck</label>
                 <input value={modal.form.truck} onChange={(e) => setModal({ ...modal, form: { ...modal.form, truck: e.target.value } })} />
+              </div>
+              <div className="field">
+                <label>Unit #</label>
+                <input value={modal.form.unit} onChange={(e) => setModal({ ...modal, form: { ...modal.form, unit: e.target.value } })} placeholder="202" />
+              </div>
+              <div className="field">
+                <label>Telegram group chat ID</label>
+                <input value={modal.form.telegramChatId} onChange={(e) => setModal({ ...modal, form: { ...modal.form, telegramChatId: e.target.value } })} placeholder="-1001234567890" />
               </div>
             </div>
             <div className="field" style={{ marginTop: 12 }}>

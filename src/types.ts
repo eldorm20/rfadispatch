@@ -36,6 +36,8 @@ export interface Driver {
   phone?: string;
   carrier?: string; // carrier / owner-operator they run under
   truck?: string;
+  unit?: string; // unit number (e.g. 202)
+  telegramChatId?: string; // the driver/unit's Telegram group chat id — load info is sent here on assignment
   active?: boolean;
   notes?: string;
   createdAt: number;
