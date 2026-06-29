@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>RFA Dispatch Sync — Settings</title>
+    <style>
+      body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #02110f; color: #eafff7; margin: 0; padding: 28px; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p.sub { color: #7fa599; font-size: 13px; margin: 0 0 22px; }
+      label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #7fa599; margin: 14px 0 5px; }
+      input { width: 100%; max-width: 460px; padding: 9px 11px; border-radius: 8px; border: 1px solid rgba(120,200,180,.25); background: rgba(2,17,15,.6); color: #eafff7; font-size: 13px; box-sizing: border-box; }
+      button { margin-top: 20px; padding: 10px 18px; border: none; border-radius: 8px; background: linear-gradient(135deg,#2dd4bf,#4ade80); color: #02110f; font-weight: 700; cursor: pointer; }
+      .ok { color: #4ade80; font-size: 13px; margin-left: 12px; }
+      .card { max-width: 500px; }
+      code { background: rgba(120,200,180,.12); padding: 1px 5px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>RFA Dispatch — Amazon Relay Sync</h1>
+      <p class="sub">Connect to your Firebase project so captured trips sync into the TMS.</p>
+
+      <label>Firebase Project ID</label>
+      <input id="projectId" placeholder="rfadispatch" />
+
+      <label>Firebase Web API Key</label>
+      <input id="apiKey" placeholder="AIza..." />
+
+      <label>Sync account email</label>
+      <input id="syncEmail" placeholder="sync@rfa.com" />
+
+      <label>Sync account password</label>
+      <input id="syncPassword" type="password" placeholder="••••••••" />
+
+      <label>Attribute imported loads to (name shown on boards)</label>
+      <input id="dispatcherName" placeholder="Amazon Sync" />
+
+      <div>
+        <button id="save">Save</button>
+        <span class="ok" id="status"></span>
+      </div>
+      <p class="sub" style="margin-top:20px;">
+        The sync account is a normal Firebase Auth (Email/Password) user in your project — create one in
+        Firebase Console → Authentication. It needs write access under your Firestore rules.
+      </p>
+    </div>
+    <script src="options.js"></script>
+  </body>
+</html>

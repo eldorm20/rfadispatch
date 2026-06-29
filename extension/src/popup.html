@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #02110f; color: #eafff7; margin: 0; padding: 16px; width: 260px; }
+      h1 { font-size: 14px; margin: 0 0 10px; letter-spacing: 1px; }
+      .row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(120,200,180,.15); }
+      .muted { color: #7fa599; }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+      .ok { background: #4ade80; } .warn { background: #facc15; } .err { background: #f87171; }
+      a { color: #2dd4bf; font-size: 12px; display: inline-block; margin-top: 12px; }
+      .err-msg { color: #f87171; font-size: 11px; margin-top: 8px; word-break: break-word; }
+    </style>
+  </head>
+  <body>
+    <h1>RFA DISPATCH SYNC</h1>
+    <div class="row"><span>Status</span><span id="state"><span class="dot warn"></span>—</span></div>
+    <div class="row"><span class="muted">Last sync</span><span id="lastSync">—</span></div>
+    <div class="row"><span class="muted">Last batch</span><span id="lastCount">—</span></div>
+    <div class="row"><span class="muted">Created / Updated</span><span id="cu">—</span></div>
+    <div class="err-msg" id="err"></div>
+    <a href="#" id="opts">⚙ Settings</a>
+    <script src="popup.js"></script>
+  </body>
+</html>
