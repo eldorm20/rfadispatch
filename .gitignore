@@ -6,6 +6,10 @@ dist-ssr
 .env.*
 !.env.example
 
+# Secrets — never commit
+service-account*.json
+**/service-account*.json
+
 # Extension build artifact (zip for Chrome Web Store upload)
 extension/*.zip
 
