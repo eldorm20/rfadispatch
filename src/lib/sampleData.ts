@@ -35,13 +35,21 @@ const day = (offset: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-export async function seedSampleData(): Promise<{ loads: number; drivers: number; invoices: number }> {
+export async function seedSampleData(): Promise<{ loads: number; drivers: number; invoices: number; errors: string[] }> {
+  const errors: string[] = [];
+  let driverCount = 0, loadCount = 0, invoiceCount = 0;
+
   // Drivers
   for (let i = 0; i < DRIVERS.length; i++) {
-    await store.createDriver({
-      name: DRIVERS[i].name, phone: DRIVERS[i].phone, carrier: CARRIERS[(i % (CARRIERS.length - 1)) + 1],
-      truck: "TRK-" + (1000 + i * 7), active: true,
-    });
+    try {
+      await store.createDriver({
+        name: DRIVERS[i].name, phone: DRIVERS[i].phone, carrier: CARRIERS[(i % (CARRIERS.length - 1)) + 1],
+        truck: "TRK-" + (1000 + i * 7), active: true,
+      });
+      driverCount++;
+    } catch (e) {
+      errors.push("driver: " + (e instanceof Error ? e.message : String(e)));
+    }
   }
 
   // Loads — spread across teams, statuses, and the last 5 days
@@ -93,14 +101,29 @@ export async function seedSampleData(): Promise<{ loads: number; drivers: number
     createdAt: amzCreated, updatedAt: amzCreated,
   });
 
-  for (const l of loads) await store.createLoadRaw(l);
+  for (const l of loads) {
+    try {
+      await store.createLoadRaw(l);
+      loadCount++;
+    } catch (e) {
+      errors.push("load: " + (e instanceof Error ? e.message : String(e)));
+    }
+  }
 
   // A couple of invoices for the Invoices tab (one paid, one outstanding)
   const invoices: Omit<Invoice, "id">[] = [
     { number: "INV-1001", carrier: "Silk Road Logistics", loadIds: [], periodStart: day(-7), periodEnd: day(0), totalGross: 11800, commissionPct: 5, amountDue: 590, status: "paid", dueDate: day(-1), paidAt: Date.now() - 86400000, createdAt: Date.now() - 5 * 86400000 },
     { number: "INV-1002", carrier: "Eagle Owner-Op", loadIds: [], periodStart: day(-7), periodEnd: day(0), totalGross: 9460, commissionPct: 5, amountDue: 473, status: "sent", dueDate: day(7), createdAt: Date.now() - 2 * 86400000 },
   ];
-  for (const inv of invoices) await store.createInvoice(inv);
+  for (const inv of invoices) {
+    try {
+      await store.createInvoice(inv);
+      invoiceCount++;
+    } catch (e) {
+      errors.push("invoice: " + (e instanceof Error ? e.message : String(e)));
+    }
+  }
 
-  return { loads: loads.length, drivers: DRIVERS.length, invoices: invoices.length };
+  // Surface the first distinct error so the caller can show why something didn't write.
+  return { loads: loadCount, drivers: driverCount, invoices: invoiceCount, errors: [...new Set(errors)].slice(0, 2) };
 }

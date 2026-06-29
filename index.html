@@ -7,8 +7,14 @@
     <meta name="theme-color" content="#02110f" />
     <title>Dispatch TMS</title>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin:0;background:#02110f">
+    <div id="root">
+      <!-- Instant paint while the app bundle loads (replaced on mount) -->
+      <div style="position:fixed;inset:0;display:grid;place-items:center;background:#02110f">
+        <div style="width:34px;height:34px;border:3px solid rgba(120,200,180,.25);border-top-color:#2dd4bf;border-radius:50%;animation:rfaspin .8s linear infinite"></div>
+      </div>
+      <style>@keyframes rfaspin{to{transform:rotate(360deg)}}</style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

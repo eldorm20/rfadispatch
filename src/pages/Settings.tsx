@@ -36,7 +36,11 @@ export function Settings() {
     if (!confirm("Add ~25 sample loads + drivers + invoices to the database for a demo? You can delete them later.")) return;
     try {
       const r = await seedSampleData();
-      toast(`Seeded ${r.loads} loads, ${r.drivers} drivers, ${r.invoices} invoices`);
+      if (r.errors.length) {
+        toast(`Seeded ${r.loads} loads / ${r.drivers} drivers / ${r.invoices} invoices. Issue: ${r.errors[0]}`);
+      } else {
+        toast(`✓ Seeded ${r.loads} loads, ${r.drivers} drivers, ${r.invoices} invoices`);
+      }
     } catch (e) {
       toast("Seed failed: " + (e instanceof Error ? e.message : "error"));
     }
