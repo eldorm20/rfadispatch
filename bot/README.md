@@ -1,8 +1,11 @@
-# RFA Dispatch — Telegram bot worker
+# RFA Dispatch — Telegram bot worker (local / self-host alternative)
+
+> **For cloud hosting (recommended), use the Netlify Functions** in
+> [`../netlify/functions`](../netlify/functions/README.md) instead — no always-on
+> machine needed. This `bot/` worker is the local/self-host option. **Don't run both.**
 
 Sends Amazon load info to each driver's Telegram **unit group** automatically when
-a dispatcher assigns the driver in the TMS. Also **auto-discovers groups** so you
-never copy chat IDs.
+a driver is assigned. Also **auto-discovers groups** so you never copy chat IDs.
 
 ## How it works
 - **Long-polls Telegram** → whenever the bot is added to a group, it records that

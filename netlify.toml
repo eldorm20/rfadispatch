@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  # bundle the service account from env; firebase-admin is a normal dependency
+  external_node_modules = ["firebase-admin"]
+
+# SPA routing is handled by public/_redirects (/.netlify/functions/* is excluded automatically).

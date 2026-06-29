@@ -8,7 +8,7 @@
    Env (.env):  TELEGRAM_BOT_TOKEN, GOOGLE_APPLICATION_CREDENTIALS, FIREBASE_PROJECT_ID */
 
 import admin from "firebase-admin";
-import { formatLoadMessage } from "./templates.js";
+import { formatLoadMessage } from "../shared/telegramTemplate.mjs";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!TOKEN) throw new Error("Set TELEGRAM_BOT_TOKEN in bot/.env");
