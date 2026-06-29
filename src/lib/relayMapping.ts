@@ -28,6 +28,7 @@ interface RawStop {
     state?: string;
     postalCode?: string;
     locationCategory?: string;
+    timeZone?: string;
   } | null;
 }
 interface RawDriver {
@@ -54,6 +55,7 @@ interface RawEntity {
   drivers?: RawDriver[];
   loads?: Array<{
     equipmentType?: string;
+    loadType?: string; // LOADED | EMPTY
     stops?: RawStop[];
     driverList?: RawDriver[];
     specialServices?: string[];
@@ -98,6 +100,7 @@ function mapStop(s: RawStop): RelayStop {
     state: s.location?.state,
     postalCode: s.location?.postalCode,
     scheduledArrival: s.calculatedEstimateArrivalTime ?? s.originalScheduledArrivalTime ?? undefined,
+    timeZone: s.location?.timeZone,
     category: s.location?.locationCategory,
     loadingType: s.loadingType ?? s.unloadingType ?? undefined,
     instructions: instructions.length ? instructions : undefined,
@@ -114,8 +117,10 @@ function buildRoute(loads: RawEntity["loads"]): { stops: RelayStop[]; specialSer
   (loads ?? []).forEach((leg) => {
     (leg.specialServices ?? []).forEach((s) => services.add(s));
     maxWeight = Math.max(maxWeight, leg.weight?.value ?? 0);
+    const legLoaded = (leg.loadType ?? "").toUpperCase() === "LOADED";
     (leg.stops ?? []).forEach((rs) => {
       const m = mapStop(rs);
+      m.loaded = legLoaded;
       m.specialServices?.forEach((s) => services.add(s));
       const prev = stops[stops.length - 1];
       // skip the duplicate handoff stop shared between consecutive legs

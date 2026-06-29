@@ -1,0 +1,13 @@
+{
+  "name": "rfa-telegram-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "RFA Dispatch Telegram worker — auto-registers driver groups and sends load info on assignment.",
+  "scripts": {
+    "start": "node --env-file=.env index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.3.0"
+  }
+}

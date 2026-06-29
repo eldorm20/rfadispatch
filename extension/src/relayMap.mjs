@@ -31,6 +31,7 @@ function mapStop(s) {
     state: loc.state,
     postalCode: loc.postalCode,
     scheduledArrival: s.calculatedEstimateArrivalTime || s.originalScheduledArrivalTime || undefined,
+    timeZone: loc.timeZone,
     category: loc.locationCategory,
     loadingType: s.loadingType || s.unloadingType || undefined,
     instructions: instr.length ? instr : undefined,
@@ -46,8 +47,10 @@ function buildRoute(loads) {
   (loads || []).forEach((leg) => {
     (leg.specialServices || []).forEach((s) => services.add(s));
     maxWeight = Math.max(maxWeight, (leg.weight && leg.weight.value) || 0);
+    const legLoaded = (leg.loadType || "").toUpperCase() === "LOADED";
     (leg.stops || []).forEach((rs) => {
       const m = mapStop(rs);
+      m.loaded = legLoaded;
       (m.specialServices || []).forEach((s) => services.add(s));
       const prev = stops[stops.length - 1];
       if (prev && prev.label && prev.label === m.label && prev.type !== "PICKUP") {

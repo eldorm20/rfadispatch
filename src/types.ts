@@ -37,7 +37,8 @@ export interface Driver {
   carrier?: string; // carrier / owner-operator they run under
   truck?: string;
   unit?: string; // unit number (e.g. 202)
-  telegramChatId?: string; // the driver/unit's Telegram group chat id — load info is sent here on assignment
+  payType?: "percent" | "cpm"; // percent/owner sees the rate; cpm company driver does not
+  telegramChatId?: string; // optional manual override; normally auto-matched by unit/name
   active?: boolean;
   notes?: string;
   createdAt: number;
@@ -133,8 +134,10 @@ export interface RelayStop {
   state?: string;
   postalCode?: string;
   scheduledArrival?: string; // ISO (calculatedEstimateArrivalTime)
+  timeZone?: string; // IANA tz of the stop (for local time in Telegram messages)
+  loaded?: boolean; // true = Loaded leg, false = Empty (repositioning)
   category?: string; // locationCategory (e.g. SORTABLE / FACILITY)
-  loadingType?: string; // PRELOADED / LIVE
+  loadingType?: string; // PRELOADED / LIVE / DROP
   instructions?: string[]; // pickup or delivery instructions
   specialServices?: string[]; // e.g. SWING_DOOR
   earlyCheckInNotAllowed?: boolean;
@@ -203,6 +206,10 @@ export interface Load {
 
   // Set when source === "amazon" — raw Relay trip metadata (stops, contract, version).
   amazon?: AmazonMeta;
+
+  // Telegram dispatch tracking (set by the bot worker once it sends to the driver group).
+  telegramSentFor?: string; // the driver name the load info was last sent for (re-sends on reassignment)
+  telegramSentAt?: number;
 
   notes?: string;
 
