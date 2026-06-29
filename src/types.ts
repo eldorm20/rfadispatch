@@ -185,6 +185,7 @@ export interface Load {
   // Ownership + lifecycle
   dispatcherId: string; // uid of dispatcher who booked it
   dispatcherName: string;
+  team?: string; // denormalized from the dispatcher's profile (for reliable audit/reporting)
   status: LoadStatus;
 
   // Update board

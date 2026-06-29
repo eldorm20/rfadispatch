@@ -10,6 +10,8 @@ export interface DataStore {
   /** Real-time subscription to all loads (newest first). Returns an unsubscribe fn. */
   subscribeLoads(cb: (loads: Load[]) => void): () => void;
   createLoad(input: NewLoadInput, user: AppUser): Promise<void>;
+  /** Write a fully-formed load (explicit dispatcher/team/createdAt) — used by the sample-data seeder. */
+  createLoadRaw(load: Omit<Load, "id">): Promise<void>;
   updateLoad(id: string, patch: Partial<Load>): Promise<void>;
   setLoadStatus(id: string, status: LoadStatus): Promise<void>;
   /** Soft delete — sets deleted+deletedAt so it can be restored from Trash within 24h. */

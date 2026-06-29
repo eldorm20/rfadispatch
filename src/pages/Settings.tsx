@@ -4,6 +4,7 @@ import { useLoads, createLoad, isDuplicateLoadNumber } from "../hooks/useLoads";
 import { useSettings, saveSettings } from "../hooks/useSettings";
 import { useToast } from "../components/Toast";
 import { exportLoadsCSV, exportLoadsJSON, parseImportedLoads } from "../lib/exportImport";
+import { seedSampleData } from "../lib/sampleData";
 import { money } from "../lib/format";
 import { DEFAULT_SETTINGS, type OrgSettings } from "../types";
 
@@ -28,6 +29,16 @@ export function Settings() {
       toast("Settings saved");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function seedDemo() {
+    if (!confirm("Add ~25 sample loads + drivers + invoices to the database for a demo? You can delete them later.")) return;
+    try {
+      const r = await seedSampleData();
+      toast(`Seeded ${r.loads} loads, ${r.drivers} drivers, ${r.invoices} invoices`);
+    } catch (e) {
+      toast("Seed failed: " + (e instanceof Error ? e.message : "error"));
     }
   }
 
@@ -112,6 +123,15 @@ export function Settings() {
           <p className="muted" style={{ fontSize: 11, marginBottom: 0 }}>
             Import adds loads from a previously exported JSON file. Duplicate load numbers are skipped.
           </p>
+
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+            <button className="btn" style={{ width: "100%" }} onClick={() => void seedDemo()}>
+              ✨ Seed sample data (demo)
+            </button>
+            <p className="muted" style={{ fontSize: 11, marginBottom: 0 }}>
+              Adds ~25 realistic loads across teams A–X, drivers, and invoices — for showing the system to management.
+            </p>
+          </div>
         </div>
       </div>
     </div>

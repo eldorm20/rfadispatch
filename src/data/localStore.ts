@@ -262,11 +262,16 @@ export const localStore: DataStore = {
       gross: Number(input.gross) || 0,
       dispatcherId: user.uid,
       dispatcherName: user.name,
+      team: input.team ?? user.team ?? "",
       checkCalls: [],
       createdAt: now,
       updatedAt: now,
     };
     setLoads([load, ...getLoads()]);
+  },
+
+  async createLoadRaw(load) {
+    setLoads([{ ...load, id: uid() } as Load, ...getLoads()]);
   },
 
   async updateLoad(id, patch) {

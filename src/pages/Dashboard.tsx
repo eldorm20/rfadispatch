@@ -26,7 +26,7 @@ export function Dashboard() {
     // team -> dispatcher -> loads
     const teams = new Map<string, Map<string, Load[]>>();
     today.forEach((l) => {
-      const team = teamByName.get(l.dispatcherName) || "Unassigned";
+      const team = l.team || teamByName.get(l.dispatcherName) || "Unassigned";
       const byDisp = teams.get(team) ?? teams.set(team, new Map()).get(team)!;
       (byDisp.get(l.dispatcherName) ?? byDisp.set(l.dispatcherName, []).get(l.dispatcherName)!).push(l);
     });

@@ -61,8 +61,17 @@ export const firebaseStore: DataStore = {
       gross: Number(input.gross) || 0,
       dispatcherId: user.uid,
       dispatcherName: user.name,
+      team: input.team ?? user.team ?? "",
       checkCalls: [],
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async createLoadRaw(load) {
+    await addDoc(collection(db, COL), {
+      ...load,
+      createdAt: load.createdAt || serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   },
