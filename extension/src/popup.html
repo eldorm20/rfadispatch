@@ -3,26 +3,50 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #02110f; color: #eafff7; margin: 0; padding: 16px; width: 260px; }
-      h1 { font-size: 14px; margin: 0 0 10px; letter-spacing: 1px; }
-      .row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(120,200,180,.15); }
+      body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #02110f; color: #eafff7; margin: 0; padding: 16px; width: 280px; }
+      h1 { font-size: 14px; margin: 0 0 12px; letter-spacing: 1px; }
+      label { font-size: 11px; color: #7fa599; text-transform: uppercase; letter-spacing: .5px; display: block; margin: 8px 0 4px; }
+      input { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(120,200,180,.25); background: rgba(2,17,15,.6); color: #eafff7; font-size: 13px; }
+      button.primary { width: 100%; margin-top: 12px; padding: 10px; border: none; border-radius: 8px; background: linear-gradient(135deg,#2dd4bf,#4ade80); color: #02110f; font-weight: 700; cursor: pointer; }
+      button.ghost { background: transparent; color: #7fa599; border: 1px solid rgba(120,200,180,.25); border-radius: 8px; padding: 7px; cursor: pointer; font-size: 12px; }
+      .row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid rgba(120,200,180,.12); }
       .muted { color: #7fa599; }
       .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
       .ok { background: #4ade80; } .warn { background: #facc15; } .err { background: #f87171; }
-      a { color: #2dd4bf; font-size: 12px; display: inline-block; margin-top: 12px; }
-      .err-msg { color: #f87171; font-size: 11px; margin-top: 8px; word-break: break-word; }
+      .err-msg { color: #f87171; font-size: 11px; margin-top: 8px; min-height: 14px; }
+      .hide { display: none; }
+      .small { font-size: 11px; color: #7fa599; margin-top: 6px; }
     </style>
   </head>
   <body>
     <h1>RFA DISPATCH SYNC</h1>
-    <div class="row"><span>Status</span><span id="state"><span class="dot warn"></span>—</span></div>
-    <div class="row"><span class="muted">Last sync</span><span id="lastSync">—</span></div>
-    <div class="row"><span class="muted">Last batch</span><span id="lastCount">—</span></div>
-    <div class="row"><span class="muted">Created / Updated</span><span id="cu">—</span></div>
-    <div class="row"><span class="muted">Last poll</span><span id="lastPoll">—</span></div>
-    <div class="err-msg" id="err"></div>
-    <button id="syncNow" style="margin-top:12px;padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#2dd4bf,#4ade80);color:#02110f;font-weight:700;cursor:pointer;width:100%;">↻ Sync now</button>
-    <a href="#" id="opts">⚙ Settings</a>
+
+    <!-- Signed-out -->
+    <div id="loginView" class="hide">
+      <p class="small">Sign in with your RFA Dispatch account.</p>
+      <label>Email</label>
+      <input id="email" type="email" placeholder="you@rfa.com" autocomplete="username" />
+      <label>Password</label>
+      <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <div class="err-msg" id="loginErr"></div>
+      <button class="primary" id="signIn">Sign in</button>
+    </div>
+
+    <!-- Signed-in -->
+    <div id="statusView" class="hide">
+      <div class="row"><span class="muted">Account</span><span id="acct">—</span></div>
+      <div class="row"><span>Status</span><span id="state"><span class="dot warn"></span>—</span></div>
+      <div class="row"><span class="muted">Last sync</span><span id="lastSync">—</span></div>
+      <div class="row"><span class="muted">Last batch</span><span id="lastCount">—</span></div>
+      <div class="row"><span class="muted">Created / Updated</span><span id="cu">—</span></div>
+      <div class="row"><span class="muted">Last poll</span><span id="lastPoll">—</span></div>
+      <div class="err-msg" id="err"></div>
+      <label>Auto-sync every (minutes)</label>
+      <input id="pollMinutes" type="number" min="1" value="5" />
+      <button class="primary" id="syncNow">↻ Sync now</button>
+      <div style="margin-top:10px;text-align:right;"><button class="ghost" id="signOut">Sign out</button></div>
+    </div>
+
     <script src="popup.js"></script>
   </body>
 </html>

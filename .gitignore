@@ -6,6 +6,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# Extension build artifact (zip for Chrome Web Store upload)
+extension/*.zip
+
 # Editor / OS
 .DS_Store
 .vscode/*

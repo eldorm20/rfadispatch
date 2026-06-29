@@ -22,25 +22,20 @@ Two sync paths:
 
 It is **read-only** against Relay — it never books, accepts, or clicks anything.
 
-## Install (unpacked)
+## For dispatchers (zero setup)
 
-1. Chrome → `chrome://extensions` → enable **Developer mode**.
-2. **Load unpacked** → select this `extension/` folder.
-3. Click the extension → **Settings** and fill in:
-   - **Firebase Project ID** and **Web API Key** (same project the TMS uses)
-   - a **sync account** email + password — a Firebase Auth (Email/Password) user you
-     create in the Firebase console, allowed to write by your Firestore rules
-   - a display name to attribute imported loads to (e.g. "Amazon Sync")
-   - **background poll interval** in minutes (default 5)
-4. Open `relay.amazon.com` → **Trips**. As the page loads/refreshes, trips sync.
-   The toolbar popup shows last-sync time, batch size, and created/updated counts.
+The TMS Firebase config is **baked in** — there's nothing to configure.
+1. Install from the Chrome Web Store link (see [`PUBLISH.md`](PUBLISH.md)) → **Add to Chrome**.
+2. Click the extension icon → **sign in once** with your RFA Dispatch email/password.
+3. Open `relay.amazon.com` → **Trips**. Trips sync automatically (and every few minutes).
+   The popup shows status, last sync, and a **Sync now** button.
 
-## Without Firebase yet
+Loads sync under the signed-in dispatcher's identity (correct attribution on the boards).
 
-If Firebase isn't configured, the extension still **captures and maps** trips and
-shows the count in the popup ("Waiting for Relay" → batch size), so you can confirm
-capture works before wiring the database. To preview the data in the TMS today,
-use the app's **Gross Board → ⬇ Import Amazon** (paste the `entitiesV2` JSON).
+## For developers (testing unpacked)
+
+`chrome://extensions` → Developer mode → **Load unpacked** → select `extension/`.
+Sign in via the popup as any TMS user. (Dispatchers never do this — they use the store install.)
 
 ## Field mapping
 

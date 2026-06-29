@@ -1,57 +1,81 @@
-/* Service worker: maps captured Relay data and upserts it into the same
-   Firestore the TMS web app reads. Auth via Firebase Email/Password (a
-   dedicated sync account). Two paths:
+/* Service worker. Maps captured Relay data and upserts it into the TMS Firestore.
+   Auth = the dispatcher's own TMS login (one-time, in the popup); the token is
+   refreshed automatically. No setup, no sync account, no config entry.
+
+   Paths:
      - PASSIVE: content.js forwards raw entitiesV2 whenever Relay is open
-     - POLLING: we replay the captured Trips request on a timer (chrome.alarms)
-       so trips keep syncing even when nobody is looking at the Relay tab.
-   If Firebase isn't configured, it records a capture count for the popup. */
+     - POLLING: replays the captured Trips request on a timer (chrome.alarms) */
+import { FIREBASE } from "./config.js";
 import { mapRelayResponse } from "./relayMap.mjs";
 
 const POLL_ALARM = "rfa-poll";
 const DEFAULT_POLL_MIN = 5;
+const FS = `https://firestore.googleapis.com/v1/projects/${FIREBASE.projectId}/databases/(default)/documents`;
 
 const FS_FIELDS_NEW = [
   "loadNumber", "source", "broker", "carrier", "driver", "driverPhone", "origin",
   "destination", "pickupDate", "deliveryDate", "equipment", "miles", "gross",
-  "status", "amazon", "dispatcherId", "dispatcherName", "createdAt", "updatedAt",
+  "status", "amazon", "team", "dispatcherId", "dispatcherName", "createdAt", "updatedAt",
 ];
-// On an existing doc, only refresh Amazon-sourced fields — never clobber the
-// dispatcher attribution, documents, or invoice links the team set in the app.
 const FS_FIELDS_UPDATE = [
   "status", "gross", "driver", "driverPhone", "origin", "destination",
   "pickupDate", "deliveryDate", "miles", "equipment", "amazon", "updatedAt",
 ];
 
-async function getConfig() {
-  return await chrome.storage.local.get([
-    "projectId", "apiKey", "syncEmail", "syncPassword", "dispatcherName", "stats",
-  ]);
-}
-async function setStats(patch) {
-  const { stats = {} } = await chrome.storage.local.get("stats");
-  await chrome.storage.local.set({ stats: { ...stats, ...patch } });
+async function setState(patch) {
+  const { state = {} } = await chrome.storage.local.get("state");
+  await chrome.storage.local.set({ state: { ...state, ...patch } });
 }
 
-/* ---- Firebase Auth (cached ID token) ---- */
-let tokenCache = { idToken: null, exp: 0 };
-async function getIdToken(cfg) {
-  const now = Date.now();
-  if (tokenCache.idToken && now < tokenCache.exp - 60000) return tokenCache.idToken;
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${cfg.apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: cfg.syncEmail, password: cfg.syncPassword, returnSecureToken: true }),
-    }
-  );
-  if (!res.ok) throw new Error("Auth failed: " + (await res.text()).slice(0, 120));
+/* ---------------- Auth (dispatcher's TMS login) ---------------- */
+async function signIn(email, password) {
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE.apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim(), password, returnSecureToken: true }),
+  });
   const j = await res.json();
-  tokenCache = { idToken: j.idToken, exp: now + Number(j.expiresIn || 3600) * 1000 };
-  return j.idToken;
+  if (!res.ok) throw new Error(j.error?.message || "Sign-in failed");
+  const auth = { idToken: j.idToken, refreshToken: j.refreshToken, uid: j.localId, email: j.email, exp: Date.now() + Number(j.expiresIn) * 1000 };
+  await chrome.storage.local.set({ auth });
+  // pull the dispatcher's profile (name + team) for correct attribution
+  try {
+    const prof = await fetch(`${FS}/users/${j.localId}`, { headers: { Authorization: "Bearer " + j.idToken } });
+    if (prof.ok) {
+      const f = (await prof.json()).fields || {};
+      await chrome.storage.local.set({ profile: { name: f.name?.stringValue || j.email, team: f.team?.stringValue || "" } });
+    }
+  } catch (e) {
+    /* non-fatal */
+  }
+  return { email: j.email };
 }
 
-/* ---- Firestore typed-value serialization ---- */
+async function signOut() {
+  await chrome.storage.local.remove(["auth", "profile"]);
+}
+
+async function getToken() {
+  const { auth } = await chrome.storage.local.get("auth");
+  if (!auth) throw new Error("not-signed-in");
+  if (Date.now() < auth.exp - 60000) return auth.idToken;
+  // refresh
+  const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FIREBASE.apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(auth.refreshToken)}`,
+  });
+  const j = await res.json();
+  if (!res.ok) {
+    await signOut();
+    throw new Error("session-expired");
+  }
+  const next = { ...auth, idToken: j.id_token, refreshToken: j.refresh_token, exp: Date.now() + Number(j.expires_in) * 1000 };
+  await chrome.storage.local.set({ auth: next });
+  return next.idToken;
+}
+
+/* ---------------- Firestore typed values ---------------- */
 function toValue(v) {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === "boolean") return { booleanValue: v };
@@ -63,121 +87,106 @@ function toValue(v) {
 }
 function toFields(obj) {
   const f = {};
-  for (const k of Object.keys(obj)) {
-    if (obj[k] === undefined) continue;
-    f[k] = toValue(obj[k]);
-  }
+  for (const k of Object.keys(obj)) if (obj[k] !== undefined) f[k] = toValue(obj[k]);
   return f;
 }
+const docId = (ln) => encodeURIComponent(String(ln).replace(/\//g, "_"));
 
-const docId = (loadNumber) => encodeURIComponent(String(loadNumber).replace(/\//g, "_"));
-
-async function upsertLoad(cfg, token, load) {
-  const base = `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/(default)/documents/loads/${docId(load.loadNumber)}`;
-  const auth = { Authorization: "Bearer " + token };
-
-  // Does it already exist?
-  const head = await fetch(base, { headers: auth });
-  const exists = head.status === 200;
+async function upsertLoad(token, load) {
+  const { profile = {} } = await chrome.storage.local.get("profile");
+  const { auth } = await chrome.storage.local.get("auth");
+  const base = `${FS}/loads/${docId(load.loadNumber)}`;
+  const hdr = { Authorization: "Bearer " + token };
+  const exists = (await fetch(base, { headers: hdr })).status === 200;
 
   const now = Date.now();
   const full = {
     ...load,
-    dispatcherId: "amazon",
-    dispatcherName: cfg.dispatcherName || "Amazon Sync",
+    dispatcherId: auth?.uid || "amazon",
+    dispatcherName: profile.name || auth?.email || "Amazon Sync",
+    team: profile.team || "",
     createdAt: now,
     updatedAt: now,
   };
   const fields = exists ? FS_FIELDS_UPDATE : FS_FIELDS_NEW;
   const body = { fields: toFields(Object.fromEntries(fields.map((k) => [k, k === "updatedAt" ? now : full[k]]))) };
   const mask = fields.map((k) => `updateMask.fieldPaths=${k}`).join("&");
-
-  const res = await fetch(`${base}?${mask}`, {
-    method: "PATCH",
-    headers: { ...auth, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Firestore ${res.status}: ${(await res.text()).slice(0, 120)}`);
+  const res = await fetch(`${base}?${mask}`, { method: "PATCH", headers: { ...hdr, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error(`Firestore ${res.status}`);
   return exists ? "updated" : "created";
 }
 
 async function syncLoads(loads) {
-  const cfg = await getConfig();
-  if (!cfg.projectId || !cfg.apiKey || !cfg.syncEmail) {
-    await setStats({ lastCapture: Date.now(), lastCount: loads.length, configured: false });
-    return { ok: false, reason: "not-configured", captured: loads.length };
+  const { auth } = await chrome.storage.local.get("auth");
+  if (!auth) {
+    await setState({ lastCapture: Date.now(), lastCount: loads.length, signedIn: false });
+    return { ok: false, reason: "not-signed-in", captured: loads.length };
   }
-  const token = await getIdToken(cfg);
+  let token;
+  try {
+    token = await getToken();
+  } catch (e) {
+    await setState({ lastError: String(e.message), signedIn: false });
+    return { ok: false, error: String(e.message) };
+  }
   let created = 0, updated = 0;
   for (const l of loads) {
     try {
-      const r = await upsertLoad(cfg, token, l);
-      r === "created" ? created++ : updated++;
+      (await upsertLoad(token, l)) === "created" ? created++ : updated++;
     } catch (e) {
-      await setStats({ lastError: String(e).slice(0, 160), lastErrorAt: Date.now() });
+      await setState({ lastError: String(e.message), lastErrorAt: Date.now() });
       throw e;
     }
   }
-  await setStats({ lastSync: Date.now(), lastCount: loads.length, created, updated, configured: true, lastError: "" });
+  await setState({ lastSync: Date.now(), lastCount: loads.length, created, updated, signedIn: true, lastError: "" });
   return { ok: true, created, updated };
 }
 
-/* ---- Background polling: replay the captured Trips request on a timer ---- */
+/* ---------------- Polling ---------------- */
 async function pollNow() {
   const { tripsRequest } = await chrome.storage.local.get("tripsRequest");
-  if (!tripsRequest || !tripsRequest.url) return { ok: false, reason: "no-request-captured" };
+  if (!tripsRequest?.url) return { ok: false, reason: "no-request-captured" };
   let res;
   try {
-    res = await fetch(tripsRequest.url, {
-      method: tripsRequest.method || "POST",
-      headers: tripsRequest.headers || {},
-      body: tripsRequest.body,
-      credentials: "include",
-    });
+    res = await fetch(tripsRequest.url, { method: tripsRequest.method || "POST", headers: tripsRequest.headers || {}, body: tripsRequest.body, credentials: "include" });
   } catch (e) {
-    await setStats({ lastPollError: "network", lastPollAt: Date.now() });
+    await setState({ lastPollError: "network", lastPollAt: Date.now() });
     return { ok: false, error: String(e) };
   }
   if (!res.ok) {
-    // 401/403 → token stale; wait for the next live page interaction to refresh it
-    await setStats({ lastPollError: res.status, lastPollAt: Date.now() });
+    await setState({ lastPollError: res.status, lastPollAt: Date.now() });
     return { ok: false, status: res.status };
   }
-  const json = await res.json();
-  const loads = mapRelayResponse(json);
-  await setStats({ lastPollAt: Date.now() });
-  return await syncLoads(loads);
+  await setState({ lastPollAt: Date.now() });
+  return await syncLoads(mapRelayResponse(await res.json()));
 }
 
 async function ensureAlarm() {
   const { pollMinutes } = await chrome.storage.local.get("pollMinutes");
-  const mins = Math.max(1, Number(pollMinutes) || DEFAULT_POLL_MIN);
-  chrome.alarms.create(POLL_ALARM, { periodInMinutes: mins });
+  chrome.alarms.create(POLL_ALARM, { periodInMinutes: Math.max(1, Number(pollMinutes) || DEFAULT_POLL_MIN) });
 }
+chrome.alarms.onAlarm.addListener((a) => a.name === POLL_ALARM && pollNow().catch(() => {}));
+chrome.runtime.onInstalled.addListener(ensureAlarm);
+chrome.runtime.onStartup.addListener(ensureAlarm);
 
-chrome.alarms.onAlarm.addListener((a) => {
-  if (a.name === POLL_ALARM) pollNow().catch(() => {});
-});
-chrome.runtime.onInstalled.addListener(() => ensureAlarm());
-chrome.runtime.onStartup.addListener(() => ensureAlarm());
-
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type === "RFA_TRIPS_RAW") {
-    syncLoads(mapRelayResponse(msg.payload))
-      .then((r) => sendResponse(r))
-      .catch((e) => sendResponse({ ok: false, error: String(e) }));
-    return true;
-  }
-  if (msg?.type === "RFA_TRIPS_REQUEST") {
-    // store the latest request so polling can replay it, and (re)arm the alarm
-    chrome.storage.local.set({ tripsRequest: msg.request }).then(ensureAlarm);
-    sendResponse({ ok: true });
-    return true;
-  }
-  if (msg?.type === "RFA_POLL_NOW") {
-    pollNow()
-      .then((r) => sendResponse(r))
-      .catch((e) => sendResponse({ ok: false, error: String(e) }));
-    return true;
+/* ---------------- Messages ---------------- */
+chrome.runtime.onMessage.addListener((msg, _s, reply) => {
+  switch (msg?.type) {
+    case "RFA_TRIPS_RAW":
+      syncLoads(mapRelayResponse(msg.payload)).then(reply).catch((e) => reply({ ok: false, error: String(e) }));
+      return true;
+    case "RFA_TRIPS_REQUEST":
+      chrome.storage.local.set({ tripsRequest: msg.request }).then(ensureAlarm);
+      reply({ ok: true });
+      return true;
+    case "RFA_SIGN_IN":
+      signIn(msg.email, msg.password).then((r) => reply({ ok: true, ...r })).catch((e) => reply({ ok: false, error: String(e.message) }));
+      return true;
+    case "RFA_SIGN_OUT":
+      signOut().then(() => reply({ ok: true }));
+      return true;
+    case "RFA_POLL_NOW":
+      pollNow().then(reply).catch((e) => reply({ ok: false, error: String(e) }));
+      return true;
   }
 });
