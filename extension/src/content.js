@@ -16,6 +16,7 @@
 
     if (d.key === "trips") send({ type: "RFA_TRIPS_RAW", payload: d.payload });
     else if (d.key === "trips-request") send({ type: "RFA_TRIPS_REQUEST", request: d.request });
+    else if (d.key === "tracking") send({ type: "RFA_TRACKING_RAW", payload: d.payload });
   });
 
   console.debug("[RFA] Relay content bridge active");

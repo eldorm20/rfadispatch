@@ -6,7 +6,7 @@
      - PASSIVE: content.js forwards raw entitiesV2 whenever Relay is open
      - POLLING: replays the captured Trips request on a timer (chrome.alarms) */
 import { FIREBASE } from "./config.js";
-import { mapRelayResponse } from "./relayMap.mjs";
+import { mapRelayResponse, mapTransportViews } from "./relayMap.mjs";
 
 const POLL_ALARM = "rfa-poll";
 const DEFAULT_POLL_MIN = 5;
@@ -116,6 +116,29 @@ async function upsertLoad(token, load) {
   return exists ? "updated" : "created";
 }
 
+/** Patch live GPS/ETA onto existing load docs only (never create from a tracking ping). */
+async function syncTracking(items) {
+  const { auth } = await chrome.storage.local.get("auth");
+  if (!auth) return { ok: false, reason: "not-signed-in" };
+  let token;
+  try {
+    token = await getToken();
+  } catch {
+    return { ok: false, reason: "auth" };
+  }
+  let updated = 0;
+  for (const it of items) {
+    const base = `${FS}/loads/${docId(it.loadNumber)}`;
+    // currentDocument.exists=true → only updates a load we already have; no junk docs.
+    const url = `${base}?updateMask.fieldPaths=tracking&updateMask.fieldPaths=updatedAt&currentDocument.exists=true`;
+    const body = { fields: toFields({ tracking: it.tracking, updatedAt: Date.now() }) };
+    const res = await fetch(url, { method: "PATCH", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) updated++;
+  }
+  await setState({ lastTracking: Date.now(), trackingUpdated: updated });
+  return { ok: true, updated };
+}
+
 async function syncLoads(loads) {
   const { auth } = await chrome.storage.local.get("auth");
   if (!auth) {
@@ -178,6 +201,9 @@ chrome.runtime.onMessage.addListener((msg, _s, reply) => {
     case "RFA_TRIPS_REQUEST":
       chrome.storage.local.set({ tripsRequest: msg.request }).then(ensureAlarm);
       reply({ ok: true });
+      return true;
+    case "RFA_TRACKING_RAW":
+      syncTracking(mapTransportViews(msg.payload)).then(reply).catch((e) => reply({ ok: false, error: String(e) }));
       return true;
     case "RFA_SIGN_IN":
       signIn(msg.email, msg.password).then((r) => reply({ ok: true, ...r })).catch((e) => reply({ ok: false, error: String(e.message) }));

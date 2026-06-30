@@ -16,6 +16,7 @@ const lazyPage = (load: () => Promise<any>, name: string) =>
 const Dashboard = lazyPage(() => import("./pages/Dashboard"), "Dashboard");
 const GrossBoard = lazyPage(() => import("./pages/GrossBoard"), "GrossBoard");
 const UpdateBoard = lazyPage(() => import("./pages/UpdateBoard"), "UpdateBoard");
+const Tracking = lazyPage(() => import("./pages/Tracking"), "Tracking");
 const Drivers = lazyPage(() => import("./pages/Drivers"), "Drivers");
 const Documents = lazyPage(() => import("./pages/Documents"), "Documents");
 const Reports = lazyPage(() => import("./pages/Reports"), "Reports");
@@ -75,6 +76,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute view="updates">
               <UpdateBoard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tracking"
+          element={
+            <ProtectedRoute view="tracking">
+              <Tracking />
             </ProtectedRoute>
           }
         />

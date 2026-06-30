@@ -143,6 +143,16 @@ export interface RelayStop {
   earlyCheckInNotAllowed?: boolean;
 }
 
+/** Live GPS/ETA from Amazon's track-trace feed (captured by the extension). */
+export interface LoadTracking {
+  lat?: number;
+  lng?: number;
+  inMotion?: boolean; // true = rolling, false = stopped
+  status?: string; // e.g. IN_TRANSIT
+  eta?: string; // ISO — next stop's planned arrival
+  updatedAt?: number; // ms epoch of the last position ping
+}
+
 /** Amazon-specific metadata kept on an imported load (raw bits the boards don't model generically). */
 export interface AmazonMeta {
   tourId: string;
@@ -214,6 +224,9 @@ export interface Load {
 
   // Set when source === "amazon" — raw Relay trip metadata (stops, contract, version).
   amazon?: AmazonMeta;
+
+  // Live GPS/ETA from Amazon track-trace (set by the extension).
+  tracking?: LoadTracking;
 
   // Telegram dispatch tracking (set by the bot worker once it sends to the driver group).
   telegramSentFor?: string; // the driver name the load info was last sent for (re-sends on reassignment)

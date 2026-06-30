@@ -109,6 +109,37 @@ function mapEntity(e) {
   };
 }
 
+/** Map Amazon's track-trace transport-views list to per-load GPS/ETA updates. */
+export function mapTransportViews(input) {
+  const arr = Array.isArray(input) ? input : [];
+  return arr
+    .map((v) => {
+      const vrid = (v.weather && v.weather.vrid) || String(v.vehicleRunId || v.id || "").split(":").pop();
+      if (!vrid) return null;
+      const pos = v.position || {};
+      let eta;
+      for (const s of v.stops || []) {
+        const a = s.arrival || {};
+        if (!a.completionTime && a.plannedTime) {
+          eta = a.plannedTime;
+          break;
+        }
+      }
+      return {
+        loadNumber: vrid,
+        tracking: {
+          lat: pos.latitude,
+          lng: pos.longitude,
+          inMotion: !!pos.inMotion,
+          status: v.status,
+          eta,
+          updatedAt: pos.timestamp ? Date.parse(pos.timestamp) : Date.now(),
+        },
+      };
+    })
+    .filter(Boolean);
+}
+
 export function mapRelayResponse(input) {
   let entities = [];
   if (Array.isArray(input)) entities = input;

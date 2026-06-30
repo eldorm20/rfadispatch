@@ -8,6 +8,7 @@
   const TARGETS = [
     { key: "trips", match: "/api/tours/entitiesV2" },
     { key: "loadboard", match: "/api/loadboard/search" },
+    { key: "tracking", match: "track-trace/api/v2/transport-views" },
   ];
   const matchOf = (url) => TARGETS.find((t) => typeof url === "string" && url.includes(t.match));
 
