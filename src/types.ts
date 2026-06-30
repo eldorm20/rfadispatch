@@ -204,6 +204,14 @@ export interface Load {
   // Accounting: set once this load has been put on a carrier invoice.
   invoiceId?: string | null;
 
+  // Accessorial charges (extra pay items accounting tracks per load).
+  lumperFee?: number;
+  layoverFee?: number;
+  detentionFee?: number;
+  tonu?: number; // Truck Order Not Used — paid when a booked load is cancelled
+  otherCharges?: number;
+  accountingNotes?: string;
+
   // Set when source === "amazon" — raw Relay trip metadata (stops, contract, version).
   amazon?: AmazonMeta;
 
