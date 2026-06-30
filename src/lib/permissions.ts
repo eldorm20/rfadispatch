@@ -9,7 +9,6 @@ export type ViewKey =
   | "documents"
   | "reports"
   | "accounting"
-  | "trash"
   | "admin"
   | "settings";
 
@@ -28,7 +27,6 @@ export const NAV: NavItem[] = [
   { key: "documents", path: "/documents", label: "Docs", icon: "📄" },
   { key: "reports", path: "/reports", label: "Reports", icon: "📅" },
   { key: "accounting", path: "/accounting", label: "Accounting", icon: "🧾" },
-  { key: "trash", path: "/trash", label: "Trash", icon: "🗑" },
   { key: "admin", path: "/admin", label: "Team", icon: "👥" },
   { key: "settings", path: "/settings", label: "Settings", icon: "⚙" },
 ];
@@ -37,9 +35,9 @@ export const NAV: NavItem[] = [
 const ACCESS: Record<Role, ViewKey[]> = {
   dispatcher: ["dashboard", "gross", "updates", "drivers", "documents", "reports"],
   update_specialist: ["dashboard", "updates", "gross", "drivers", "documents", "reports"],
-  manager: ["dashboard", "gross", "updates", "drivers", "documents", "reports", "accounting", "trash", "admin", "settings"],
+  manager: ["dashboard", "gross", "updates", "drivers", "documents", "reports", "accounting", "admin", "settings"],
   accounting: ["dashboard", "accounting", "gross", "documents", "reports"],
-  admin: ["dashboard", "gross", "updates", "drivers", "documents", "reports", "accounting", "trash", "admin", "settings"],
+  admin: ["dashboard", "gross", "updates", "drivers", "documents", "reports", "accounting", "admin", "settings"],
 };
 
 export function canAccess(role: Role, view: ViewKey): boolean {

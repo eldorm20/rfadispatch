@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLoads } from "../hooks/useLoads";
 import { StatusPill } from "../components/StatusPill";
 import { money, shortDate, todayISO } from "../lib/format";
+import { printDailyReport } from "../lib/printReport";
 import type { Load } from "../types";
 
 function dayOf(ms: number): string {
@@ -49,26 +50,8 @@ export function Reports() {
     return [...m.values()].sort((a, b) => b.gross - a.gross);
   }, [dayLoads]);
 
-  function exportDay() {
-    const rows = [
-      ["Load #", "Carrier", "Broker", "Lane", "Status", "Dispatcher", "Gross"],
-      ...dayLoads.map((l) => [
-        l.loadNumber,
-        l.carrier,
-        l.broker,
-        `${l.origin} -> ${l.destination}`,
-        l.status,
-        l.dispatcherName,
-        String(l.gross),
-      ]),
-    ];
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `report-${date}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  function downloadPdf() {
+    printDailyReport({ date, loads: dayLoads, perDispatcher, gross: dayGross, best });
   }
 
   const isToday = date === todayISO();
@@ -92,8 +75,8 @@ export function Reports() {
               ↩ Today
             </button>
           )}
-          <button className="btn" onClick={exportDay} disabled={dayLoads.length === 0}>
-            ⤓ CSV
+          <button className="btn" onClick={downloadPdf} disabled={dayLoads.length === 0}>
+            ⤓ PDF
           </button>
         </div>
       </div>

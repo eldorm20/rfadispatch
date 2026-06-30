@@ -21,7 +21,6 @@ const Documents = lazyPage(() => import("./pages/Documents"), "Documents");
 const Reports = lazyPage(() => import("./pages/Reports"), "Reports");
 const Accounting = lazyPage(() => import("./pages/Accounting"), "Accounting");
 const Team = lazyPage(() => import("./pages/Team"), "Team");
-const Trash = lazyPage(() => import("./pages/Trash"), "Trash");
 const Settings = lazyPage(() => import("./pages/Settings"), "Settings");
 const TV = lazyPage(() => import("./pages/TV"), "TV");
 
@@ -108,14 +107,6 @@ function AppRoutes() {
           element={
             <ProtectedRoute view="accounting">
               <Accounting />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trash"
-          element={
-            <ProtectedRoute view="trash">
-              <Trash />
             </ProtectedRoute>
           }
         />

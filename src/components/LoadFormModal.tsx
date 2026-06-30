@@ -20,7 +20,7 @@ type Props = {
 
 const EMPTY: NewLoadInput = {
   loadNumber: "",
-  broker: "",
+  broker: "Amazon",
   brokerContact: "",
   carrier: "",
   driver: "",
@@ -111,8 +111,11 @@ export function LoadFormModal({ initial, onSave, onClose, isDuplicate }: Props) 
           </div>
 
           <div className="field">
-            <label>Broker / Customer</label>
-            <input value={form.broker} onChange={(e) => set("broker", e.target.value)} placeholder="TQL" />
+            <label>Broker</label>
+            {/* Amazon-only for now; other brokers can be added later */}
+            <select value={form.broker || "Amazon"} onChange={(e) => set("broker", e.target.value)}>
+              <option value="Amazon">Amazon</option>
+            </select>
           </div>
           <div className="field">
             <label>Broker contact</label>

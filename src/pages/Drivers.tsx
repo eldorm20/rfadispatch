@@ -3,8 +3,8 @@ import { useDrivers, createDriver, updateDriver, deleteDriver } from "../hooks/u
 import { useToast } from "../components/Toast";
 import type { Driver } from "../types";
 
-type Form = { name: string; phone: string; carrier: string; truck: string; unit: string; payType: "percent" | "cpm"; telegramChatId: string; notes: string };
-const EMPTY: Form = { name: "", phone: "", carrier: "", truck: "", unit: "", payType: "cpm", telegramChatId: "", notes: "" };
+type Form = { name: string; phone: string; carrier: string; truck: string; unit: string; payType: "percent" | "cpm"; notes: string };
+const EMPTY: Form = { name: "", phone: "", carrier: "", truck: "", unit: "", payType: "cpm", notes: "" };
 
 export function Drivers() {
   const { drivers, loading } = useDrivers();
@@ -21,7 +21,7 @@ export function Drivers() {
     setModal({ form: { ...EMPTY } });
   }
   function openEdit(d: Driver) {
-    setModal({ id: d.id, form: { name: d.name, phone: d.phone ?? "", carrier: d.carrier ?? "", truck: d.truck ?? "", unit: d.unit ?? "", payType: d.payType ?? "cpm", telegramChatId: d.telegramChatId ?? "", notes: d.notes ?? "" } });
+    setModal({ id: d.id, form: { name: d.name, phone: d.phone ?? "", carrier: d.carrier ?? "", truck: d.truck ?? "", unit: d.unit ?? "", payType: d.payType ?? "cpm", notes: d.notes ?? "" } });
   }
 
   async function save() {
@@ -140,10 +140,6 @@ export function Drivers() {
                   <option value="cpm">CPM company (no rate shown)</option>
                   <option value="percent">Percent / owner (shows rate)</option>
                 </select>
-              </div>
-              <div className="field">
-                <label>Telegram group chat ID</label>
-                <input value={modal.form.telegramChatId} onChange={(e) => setModal({ ...modal, form: { ...modal.form, telegramChatId: e.target.value } })} placeholder="-1001234567890" />
               </div>
             </div>
             <div className="field" style={{ marginTop: 12 }}>

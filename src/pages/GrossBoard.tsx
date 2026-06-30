@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { useLoads, createLoad, updateLoad, deleteLoad, restoreLoad, isDuplicateLoadNumber } from "../hooks/useLoads";
+import { useLoads, createLoad, updateLoad, purgeLoad, isDuplicateLoadNumber } from "../hooks/useLoads";
 import { useSettings } from "../hooks/useSettings";
 import { LoadFormModal } from "../components/LoadFormModal";
-import { BulkPasteModal } from "../components/BulkPasteModal";
-import { RelayImportModal } from "../components/RelayImportModal";
 import { DocsBadge } from "../components/DocsBadge";
 import { StatusPill } from "../components/StatusPill";
 import { useToast } from "../components/Toast";
@@ -20,8 +18,6 @@ export function GrossBoard() {
   const perms = user ? can(user.role) : null;
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [relayOpen, setRelayOpen] = useState(false);
   const [editing, setEditing] = useState<Load | null>(null);
   const [statusFilter, setStatusFilter] = useState<LoadStatus | "all">("all");
   const [searchq, setSearchq] = useState("");
@@ -59,12 +55,9 @@ export function GrossBoard() {
   }
 
   async function handleDelete(l: Load) {
-    const big = settings.confirmThreshold > 0 && l.gross >= settings.confirmThreshold;
-    if (big && !confirm(`Delete ${l.loadNumber} worth ${money(l.gross)}? You can still restore it from Trash within 24h.`)) {
-      return;
-    }
-    await deleteLoad(l.id);
-    toast("Load deleted", { label: "↶ Undo", fn: () => void restoreLoad(l.id) });
+    if (!confirm(`Delete ${l.loadNumber}${l.gross ? ` (${money(l.gross)})` : ""}? This can’t be undone.`)) return;
+    await purgeLoad(l.id);
+    toast("Load deleted");
   }
 
   function openNew() {
@@ -88,17 +81,9 @@ export function GrossBoard() {
           </p>
         </div>
         {perms?.bookLoads && (
-          <div className="row" style={{ flex: "0 0 auto" }}>
-            <button className="btn" onClick={() => setRelayOpen(true)} title="Import trips from Amazon Relay">
-              ⬇ Import Amazon
-            </button>
-            <button className="btn" onClick={() => setBulkOpen(true)} title="Paste multiple rows from a spreadsheet">
-              📋 Paste rows
-            </button>
-            <button className="btn primary" onClick={openNew}>
-              ＋ Book Load
-            </button>
-          </div>
+          <button className="btn primary" onClick={openNew}>
+            ＋ Book Load
+          </button>
         )}
       </div>
 
@@ -206,9 +191,6 @@ export function GrossBoard() {
         />
       )}
 
-      {bulkOpen && <BulkPasteModal existing={loads} onClose={() => setBulkOpen(false)} />}
-
-      {relayOpen && <RelayImportModal existing={loads} onClose={() => setRelayOpen(false)} />}
     </div>
   );
 }
