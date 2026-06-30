@@ -14,6 +14,11 @@ export function db() {
   return admin.firestore();
 }
 
+export function auth() {
+  db(); // ensure the app is initialized
+  return admin.auth();
+}
+
 export async function tg(method, body) {
   const r = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/${method}`, {
     method: "POST",
