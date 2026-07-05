@@ -28,7 +28,8 @@ export function LoadDetailModal({ load, canEdit, onClose }: { load: Load; canEdi
   async function save() {
     setSaving(true);
     try {
-      await updateLoad(load.id, { ...f });
+      // Persist the computed total so reports/exports read one verified number.
+      await updateLoad(load.id, { ...f, totalPayable: total });
       toast("Saved");
       onClose();
     } finally {

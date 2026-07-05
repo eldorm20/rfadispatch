@@ -87,14 +87,21 @@ export function UpdateBoard() {
   const { user } = useAuth();
   const { loads, loading } = useLoads();
   const [active, setActive] = useState<Load | null>(null);
+  const [coldOnly, setColdOnly] = useState(false);
   const perms = user ? can(user.role) : null;
+
+  const COLD_MS = 4 * 3600000;
+  const isCold = (l: Load) => Date.now() - (l.lastUpdateAt ?? l.createdAt) > COLD_MS;
 
   const byStatus = useMemo(() => {
     const map = new Map<LoadStatus, Load[]>();
     LOAD_STATUSES.forEach((s) => map.set(s, []));
-    loads.forEach((l) => map.get(l.status)?.push(l));
+    loads.filter((l) => !coldOnly || isCold(l)).forEach((l) => map.get(l.status)?.push(l));
     return map;
-  }, [loads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loads, coldOnly]);
+
+  const coldCount = loads.filter((l) => ["dispatched", "in_transit"].includes(l.status) && isCold(l)).length;
 
   return (
     <div>
@@ -103,6 +110,10 @@ export function UpdateBoard() {
           <h2>Update Board</h2>
           <p>Track every active load through its lifecycle. Add check calls as you get updates.</p>
         </div>
+        <label className="chip" style={{ cursor: "pointer", flex: "0 0 auto" }}>
+          <input type="checkbox" style={{ width: "auto" }} checked={coldOnly} onChange={(e) => setColdOnly(e.target.checked)} />
+          🥶 No updates &gt; 4h{coldCount ? ` (${coldCount})` : ""}
+        </label>
       </div>
 
       {loading ? (

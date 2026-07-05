@@ -172,7 +172,8 @@ select option { background: var(--panel-solid); }
   text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
 }
 .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.status.available   { color: var(--muted); background: rgba(127,165,153,.14); }
+/* Available = needs a driver → attention color, clearly distinct from In Transit (gold) */
+.status.available   { color: var(--orange); background: rgba(251,146,60,.14); }
 .status.booked      { color: var(--blue);  background: rgba(96,165,250,.14); }
 .status.dispatched  { color: var(--purple);background: rgba(167,139,250,.14); }
 .status.in_transit  { color: var(--gold);  background: rgba(250,204,21,.14); }

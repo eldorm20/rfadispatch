@@ -16,6 +16,8 @@ type Props = {
   onClose: () => void;
   /** Returns true if this load number collides with an existing one (excluding the one being edited). */
   isDuplicate?: (loadNumber: string) => boolean;
+  /** Known carrier names for autocomplete (prevents "Silk Road" vs "Silk Road Logistics" silos). */
+  carriers?: string[];
 };
 
 const EMPTY: NewLoadInput = {
@@ -37,7 +39,10 @@ const EMPTY: NewLoadInput = {
   notes: "",
 };
 
-export function LoadFormModal({ initial, onSave, onClose, isDuplicate }: Props) {
+export function LoadFormModal({ initial, onSave, onClose, isDuplicate, carriers = [] }: Props) {
+  // When the driver comes from the roster, phone is locked to the roster value
+  // (prevents the load drifting out of sync with the Drivers directory).
+  const [phoneLocked, setPhoneLocked] = useState(!!initial?.driver);
   const [form, setForm] = useState<NewLoadInput>(
     initial
       ? {
@@ -124,7 +129,14 @@ export function LoadFormModal({ initial, onSave, onClose, isDuplicate }: Props) 
 
           <div className="field">
             <label>Carrier *</label>
-            <input value={form.carrier} onChange={(e) => set("carrier", e.target.value)} placeholder="Owner-op / carrier co." />
+            {/* Datalist of known carriers keeps names standardized ("Silk Road" vs
+                "Silk Road Logistics" would split Reports/Accounting groupings). */}
+            <input list="carrierList" value={form.carrier} onChange={(e) => set("carrier", e.target.value)} placeholder="Owner-op / carrier co." />
+            <datalist id="carrierList">
+              {carriers.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </div>
           <div className="field">
             <label>Equipment</label>
@@ -141,21 +153,32 @@ export function LoadFormModal({ initial, onSave, onClose, isDuplicate }: Props) 
             <label>Driver</label>
             <DriverPicker
               value={form.driver}
-              onText={(name) => set("driver", name)}
-              onPick={(d) =>
+              onText={(name) => {
+                set("driver", name);
+                setPhoneLocked(false); // free-typed name → phone editable again
+              }}
+              onPick={(d) => {
+                setPhoneLocked(true);
                 setForm((f) => ({
                   ...f,
                   driver: d.name,
-                  driverPhone: d.phone || f.driverPhone,
+                  driverPhone: d.phone || "",
                   truck: d.truck || f.truck,
                   carrier: f.carrier || d.carrier || "",
-                }))
-              }
+                }));
+              }}
             />
           </div>
           <div className="field">
-            <label>Driver phone</label>
-            <input value={form.driverPhone} onChange={(e) => set("driverPhone", e.target.value)} placeholder="(555) 555-5555" />
+            <label>Driver phone{phoneLocked ? " · from roster" : ""}</label>
+            <input
+              value={form.driverPhone}
+              readOnly={phoneLocked}
+              style={phoneLocked ? { opacity: 0.7, cursor: "not-allowed" } : undefined}
+              title={phoneLocked ? "Synced from the Drivers roster — edit it there" : undefined}
+              onChange={(e) => set("driverPhone", e.target.value)}
+              placeholder="(555) 555-5555"
+            />
           </div>
 
           <div className="field">
@@ -179,6 +202,12 @@ export function LoadFormModal({ initial, onSave, onClose, isDuplicate }: Props) 
           <div className="field">
             <label>Miles</label>
             <input type="number" value={form.miles ?? ""} onChange={(e) => set("miles", e.target.value ? Number(e.target.value) : undefined)} placeholder="920" />
+            {/* Live rate-per-mile — the number dispatchers actually judge a load by */}
+            {form.gross > 0 && (form.miles ?? 0) > 0 && (
+              <span style={{ fontSize: 12, color: "var(--teal-2)", fontWeight: 700 }}>
+                RPM: ${(form.gross / (form.miles as number)).toFixed(2)}/mi
+              </span>
+            )}
           </div>
           <div className="field">
             <label>Status</label>

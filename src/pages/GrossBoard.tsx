@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useLoads, createLoad, updateLoad, purgeLoad, isDuplicateLoadNumber } from "../hooks/useLoads";
+import { useDrivers } from "../hooks/useDrivers";
 import { useSettings } from "../hooks/useSettings";
 import { LoadFormModal } from "../components/LoadFormModal";
 import { DocsBadge } from "../components/DocsBadge";
@@ -13,9 +14,18 @@ import { LOAD_STATUSES, STATUS_LABELS, type Load, type LoadStatus, type NewLoadI
 export function GrossBoard() {
   const { user } = useAuth();
   const { loads, loading, error } = useLoads();
+  const { drivers } = useDrivers();
   const settings = useSettings();
   const toast = useToast();
   const perms = user ? can(user.role) : null;
+
+  // Standardized carrier list for the form's autocomplete: roster carriers + names already used on loads.
+  const carrierList = useMemo(() => {
+    const s = new Set<string>();
+    drivers.forEach((d) => d.carrier && s.add(d.carrier.trim()));
+    loads.forEach((l) => l.carrier && s.add(l.carrier.trim()));
+    return [...s].sort();
+  }, [drivers, loads]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Load | null>(null);
@@ -143,6 +153,11 @@ export function GrossBoard() {
                   <td className="mono">{l.loadNumber}</td>
                   <td>
                     {l.origin || "—"} <span className="muted">→</span> {l.destination || "—"}
+                    {l.miles ? (
+                      <span className="muted" style={{ fontSize: 11 }}>
+                        {" "}· {l.miles} mi{l.gross && l.miles ? ` · $${(l.gross / l.miles).toFixed(2)}/mi` : ""}
+                      </span>
+                    ) : null}
                   </td>
                   <td>
                     {l.carrier || "—"}
@@ -182,6 +197,7 @@ export function GrossBoard() {
       {modalOpen && (
         <LoadFormModal
           initial={editing}
+          carriers={carrierList}
           isDuplicate={(ln) => isDuplicateLoadNumber(loads, ln, editing?.id)}
           onSave={handleSave}
           onClose={() => {

@@ -221,6 +221,7 @@ export interface Load {
   tonu?: number; // Truck Order Not Used — paid when a booked load is cancelled
   otherCharges?: number;
   accountingNotes?: string;
+  totalPayable?: number; // gross + accessorials, persisted on save (not recomputed downstream)
 
   // Set when source === "amazon" — raw Relay trip metadata (stops, contract, version).
   amazon?: AmazonMeta;
