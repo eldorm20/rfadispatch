@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../firebase";
 import { useAuth } from "../auth/AuthContext";
 import { Logo } from "../components/Logo";
 
@@ -9,7 +11,23 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
+
+  async function forgot() {
+    setErr("");
+    setInfo("");
+    if (!email.trim()) {
+      setErr("Enter your email first, then tap “Forgot password”.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setInfo("Reset link sent — check your inbox.");
+    } catch {
+      setErr("Couldn’t send the reset email. Check the address.");
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,11 +65,16 @@ export function Login() {
           <label>Password</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" required />
         </div>
-        <div className="err">{err}</div>
+        <div className="err">{err || (info && <span style={{ color: "var(--green)" }}>{info}</span>)}</div>
 
         <button className="btn primary" style={{ width: "100%" }} disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
+        <div style={{ textAlign: "center", marginTop: 14 }}>
+          <a href="#" style={{ fontSize: 12, color: "var(--muted)" }} onClick={(e) => { e.preventDefault(); void forgot(); }}>
+            Forgot password?
+          </a>
+        </div>
       </form>
     </div>
   );

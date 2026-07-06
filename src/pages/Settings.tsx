@@ -33,13 +33,13 @@ export function Settings() {
   }
 
   async function seedDemo() {
-    if (!confirm("Add ~25 sample loads + drivers + invoices to the database for a demo? You can delete them later.")) return;
+    if (!confirm("Add ~25 sample loads + drivers to the database for a demo? You can delete them later.")) return;
     try {
       const r = await seedSampleData();
       if (r.errors.length) {
-        toast(`Seeded ${r.loads} loads / ${r.drivers} drivers / ${r.invoices} invoices. Issue: ${r.errors[0]}`);
+        toast(`Seeded ${r.loads} loads / ${r.drivers} drivers. Issue: ${r.errors[0]}`);
       } else {
-        toast(`✓ Seeded ${r.loads} loads, ${r.drivers} drivers, ${r.invoices} invoices`);
+        toast(`✓ Seeded ${r.loads} loads, ${r.drivers} drivers`);
       }
     } catch (e) {
       toast("Seed failed: " + (e instanceof Error ? e.message : "error"));

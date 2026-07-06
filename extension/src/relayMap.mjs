@@ -1,5 +1,5 @@
-/* Canonical mapper for the extension (ES module, imported by the background
-   worker). Mirrors the app's src/lib/relayMapping.ts — keep the two in sync. */
+/* Canonical Amazon Relay → TMS mapper (the single source of truth; the old
+   app-side copy was removed once auto-sync replaced manual import). */
 
 function mapEquipment(raw) {
   const t = (raw || "").toUpperCase();

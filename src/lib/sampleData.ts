@@ -1,7 +1,7 @@
 /* One-click realistic demo dataset for management presentations.
    Writes straight to the active store (live Firestore when connected). Manager-only. */
 import { store } from "../data";
-import type { Invoice, Load, LoadStatus } from "../types";
+import type { Load, LoadStatus } from "../types";
 
 const TEAMS: { team: string; name: string; id: string }[] = [
   { team: "Team A", name: "Aziz", id: "seed_aziz" },
@@ -35,9 +35,9 @@ const day = (offset: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-export async function seedSampleData(): Promise<{ loads: number; drivers: number; invoices: number; errors: string[] }> {
+export async function seedSampleData(): Promise<{ loads: number; drivers: number; errors: string[] }> {
   const errors: string[] = [];
-  let driverCount = 0, loadCount = 0, invoiceCount = 0;
+  let driverCount = 0, loadCount = 0;
 
   // Drivers
   for (let i = 0; i < DRIVERS.length; i++) {
@@ -110,20 +110,6 @@ export async function seedSampleData(): Promise<{ loads: number; drivers: number
     }
   }
 
-  // A couple of invoices for the Invoices tab (one paid, one outstanding)
-  const invoices: Omit<Invoice, "id">[] = [
-    { number: "INV-1001", carrier: "Silk Road Logistics", loadIds: [], periodStart: day(-7), periodEnd: day(0), totalGross: 11800, commissionPct: 5, amountDue: 590, status: "paid", dueDate: day(-1), paidAt: Date.now() - 86400000, createdAt: Date.now() - 5 * 86400000 },
-    { number: "INV-1002", carrier: "Eagle Owner-Op", loadIds: [], periodStart: day(-7), periodEnd: day(0), totalGross: 9460, commissionPct: 5, amountDue: 473, status: "sent", dueDate: day(7), createdAt: Date.now() - 2 * 86400000 },
-  ];
-  for (const inv of invoices) {
-    try {
-      await store.createInvoice(inv);
-      invoiceCount++;
-    } catch (e) {
-      errors.push("invoice: " + (e instanceof Error ? e.message : String(e)));
-    }
-  }
-
   // Surface the first distinct error so the caller can show why something didn't write.
-  return { loads: loadCount, drivers: driverCount, invoices: invoiceCount, errors: [...new Set(errors)].slice(0, 2) };
+  return { loads: loadCount, drivers: driverCount, errors: [...new Set(errors)].slice(0, 2) };
 }
