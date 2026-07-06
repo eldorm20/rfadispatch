@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useLoads } from "../hooks/useLoads";
 import { StatusPill } from "../components/StatusPill";
+import { TrackingMap } from "../components/TrackingMap";
 import { relativeTime } from "../lib/format";
 import type { Load } from "../types";
 
@@ -49,6 +50,8 @@ export function Tracking() {
         </div>
         <span className="chip"><span className="dot live" /> Real-time</span>
       </div>
+
+      {rows.some((l) => l.tracking?.lat != null) && <TrackingMap loads={rows} />}
 
       {rows.length === 0 ? (
         <div className="empty">

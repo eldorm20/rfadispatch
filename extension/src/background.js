@@ -162,7 +162,20 @@ async function syncLoads(loads) {
     }
   }
   await setState({ lastSync: Date.now(), lastCount: loads.length, created, updated, signedIn: true, lastError: "" });
+  writeHeartbeat(token, loads.length).catch(() => {});
   return { ok: true, created, updated };
+}
+
+/** Heartbeat → syncHealth/{uid} so the TMS can show "Amazon sync · Xm ago" and flag stalls. */
+async function writeHeartbeat(token, count) {
+  const { auth, profile = {} } = await chrome.storage.local.get(["auth", "profile"]);
+  if (!auth) return;
+  const url = `${FS}/syncHealth/${auth.uid}?updateMask.fieldPaths=lastSyncAt&updateMask.fieldPaths=lastCount&updateMask.fieldPaths=byName&updateMask.fieldPaths=byEmail`;
+  await fetch(url, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: toFields({ lastSyncAt: Date.now(), lastCount: count, byName: profile.name || "", byEmail: auth.email || "" }) }),
+  });
 }
 
 /* ---------------- Polling ---------------- */

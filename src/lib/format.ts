@@ -40,3 +40,11 @@ export function shortDate(iso?: string): string {
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/** Normalize US phone input to "+1 (AAA) BBB-CCCC"; returns the trimmed original if not 10/11 digits. */
+export function normalizePhone(raw: string): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (ten.length !== 10) return String(raw ?? "").trim();
+  return `+1 (${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+}

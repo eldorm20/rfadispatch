@@ -1,13 +1,19 @@
 import { useMemo, useState } from "react";
 import { useDrivers, createDriver, updateDriver, deleteDriver } from "../hooks/useDrivers";
+import { useLoads, updateLoad } from "../hooks/useLoads";
 import { useToast } from "../components/Toast";
+import { normalizePhone } from "../lib/format";
 import type { Driver } from "../types";
+
+// Statuses where the load still mirrors the roster (delivered/invoiced history stays frozen).
+const ACTIVE_STATUSES = ["available", "booked", "dispatched", "in_transit"];
 
 type Form = { name: string; phone: string; carrier: string; truck: string; unit: string; payType: "percent" | "cpm"; notes: string };
 const EMPTY: Form = { name: "", phone: "", carrier: "", truck: "", unit: "", payType: "cpm", notes: "" };
 
 export function Drivers() {
   const { drivers, loading } = useDrivers();
+  const { loads } = useLoads();
   const toast = useToast();
   const [q, setQ] = useState("");
   const [modal, setModal] = useState<null | { id?: string; form: Form }>(null);
@@ -26,13 +32,36 @@ export function Drivers() {
 
   async function save() {
     if (!modal) return;
-    const f = modal.form;
-    if (!f.name.trim()) return;
+    const f = { ...modal.form, name: modal.form.name.trim(), phone: normalizePhone(modal.form.phone), truck: modal.form.truck.trim() };
+    if (!f.name) return;
+
+    // Roster governance: no two active drivers may share a phone or a truck.
+    const clash = drivers.find(
+      (d) =>
+        d.id !== modal.id &&
+        d.active !== false &&
+        ((f.phone && normalizePhone(d.phone ?? "") === f.phone) || (f.truck && (d.truck ?? "").trim().toLowerCase() === f.truck.toLowerCase()))
+    );
+    if (clash) {
+      toast(`Already assigned to ${clash.name} — check phone / truck.`);
+      return;
+    }
+
     if (modal.id) {
-      await updateDriver(modal.id, { ...f, name: f.name.trim() });
-      toast("Driver updated");
+      const prev = drivers.find((d) => d.id === modal.id);
+      await updateDriver(modal.id, f);
+      // Propagate the edit to this driver's ACTIVE loads so boards don't go stale.
+      if (prev) {
+        const affected = loads.filter((l) => l.driver === prev.name && ACTIVE_STATUSES.includes(l.status));
+        for (const l of affected) {
+          await updateLoad(l.id, { driver: f.name, driverPhone: f.phone, truck: f.truck });
+        }
+        toast(affected.length ? `Driver updated · synced ${affected.length} active load${affected.length === 1 ? "" : "s"}` : "Driver updated");
+      } else {
+        toast("Driver updated");
+      }
     } else {
-      await createDriver({ ...f, name: f.name.trim(), active: true });
+      await createDriver({ ...f, active: true });
       toast("Driver added");
     }
     setModal(null);

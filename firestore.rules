@@ -53,5 +53,19 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isManager();
     }
+
+    // Extension sync heartbeats — each user writes their own doc; everyone reads
+    // (powers the "Amazon sync · Xm ago" health chip).
+    match /syncHealth/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Telegram group registry — written by the bot (Admin SDK bypasses rules);
+    // clients may read it (e.g. to show which units are connected).
+    match /telegramGroups/{chatId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
   }
 }
