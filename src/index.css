@@ -251,7 +251,22 @@ table.data tr:hover td { background: rgba(45,212,191,0.04); }
 .login-card .sub { text-align: center; color: var(--muted); font-size: 12px; margin: 0 0 24px; letter-spacing: 1px; text-transform: uppercase; }
 .login-card .err { color: var(--red); font-size: 13px; margin-top: 4px; min-height: 18px; }
 
-@media (max-width: 720px) {
-  .topbar { flex-wrap: wrap; }
-  .content { padding: 18px; }
+@media (max-width: 860px) {
+  .topbar { flex-wrap: wrap; padding: 12px 16px; gap: 10px; }
+  /* Nav becomes a single horizontally-scrollable row instead of a tall stack */
+  .nav {
+    order: 3;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .nav::-webkit-scrollbar { height: 0; }
+  .nav a { white-space: nowrap; flex: 0 0 auto; }
+  .brand h1 { font-size: 15px; }
+  .content { padding: 16px 14px; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .page-head { gap: 10px; }
+  table.data th, table.data td { padding: 9px 10px; }
 }

@@ -6,6 +6,7 @@ import { initials, relativeTime } from "../lib/format";
 import { ROLE_LABELS } from "../types";
 import { Logo } from "./Logo";
 import { DemoBanner } from "./DemoBanner";
+import { OfflineBanner } from "./OfflineBanner";
 
 function SyncChip() {
   const { lastSyncAt, byName } = useSyncHealth();
@@ -30,6 +31,7 @@ export function Layout() {
 
   return (
     <div className="app">
+      <OfflineBanner />
       <DemoBanner />
       <header className="topbar">
         <div className="brand">
