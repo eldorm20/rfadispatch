@@ -13,7 +13,11 @@ const DIST = path.join(__dirname, "..", "dist");
 // ---- Firebase Admin (service account from env) ----
 let db = null;
 try {
-  const svc = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || "{}");
+  // Accept the service account as raw JSON or base64 (base64 avoids env-var quoting issues).
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_B64
+    ? Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_B64, "base64").toString("utf8")
+    : process.env.FIREBASE_SERVICE_ACCOUNT || "{}";
+  const svc = JSON.parse(raw);
   if (svc.project_id) {
     admin.initializeApp({ credential: admin.credential.cert(svc), projectId: process.env.FIREBASE_PROJECT_ID || svc.project_id });
     db = admin.firestore();
