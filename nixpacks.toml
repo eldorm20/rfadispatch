@@ -1,0 +1,9 @@
+# Ensure dev dependencies (vite, typescript) are available for the build phase.
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"

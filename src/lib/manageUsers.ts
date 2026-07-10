@@ -1,7 +1,7 @@
 import { auth } from "../firebase";
 import type { Role } from "../types";
 
-const ENDPOINT = "/.netlify/functions/manage-users";
+const ENDPOINT = "/api/manage-users";
 
 interface Result {
   ok: boolean;
@@ -20,8 +20,8 @@ async function call(body: Record<string, unknown>): Promise<Result> {
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
       body: JSON.stringify(body),
     });
-    // The function only exists on the deployed Netlify site, not local dev.
-    if (res.status === 404) return { ok: false, error: "User management runs on the deployed site only." };
+    // The API only exists on the deployed Railway server, not the Vite dev server.
+    if (res.status === 404) return { ok: false, error: "User management runs on the deployed server only." };
     return (await res.json()) as Result;
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "request failed" };
